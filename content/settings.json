@@ -1,0 +1,22 @@
+{
+  "reviewMode": true,
+  "siteUrl": "",
+  "logo": "",
+  "heroVideo": "",
+  "contacts": {
+    "production": { "email": "", "whatsapp": "" },
+    "onevoicefm": { "email": "", "whatsapp": "" },
+    "shotit": { "email": "", "whatsapp": "" },
+    "academy": { "email": "", "whatsapp": "" },
+    "summit": { "email": "", "whatsapp": "" }
+  },
+  "socials": [],
+  "radio": { "streamUrl": "", "nowPlaying": "", "programmes": [], "episodes": [] },
+  "projects": [],
+  "students": [],
+  "speakers": [],
+  "summitPhotos": [],
+  "summitVideos": [],
+  "news": [],
+  "nextSummit": { "registrationUrl": "", "date": "", "venue": "" }
+}
