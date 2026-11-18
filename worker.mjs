@@ -1,3 +1,4 @@
+import {setupHtml} from './staff-setup.mjs';
 import {consoleHtml} from './studio-view.mjs';
 
 const privateHeaders = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
@@ -8,17 +9,39 @@ const teams = ['production','onevoicefm','shotit','academy','summit'];
 const fields = ['team','service','name','email','phone','organisation','date','location','budget','message','method'];
 const digest = s => crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
 
-async function staff(request,env) {
-  let accounts, pair;
-  try {
-    accounts = JSON.parse(env.STAFF_ACCOUNTS || '{}');
-    pair = atob((request.headers.get('authorization') || '').match(/^Basic ([A-Za-z0-9+/=]+)$/i)[1]);
-  } catch { return null; }
-  const i = pair.indexOf(':'), name = pair.slice(0,i);
-  const account = Object.hasOwn(accounts,name) && accounts[name];
-  if (i<1 || !account || !account.password || !['editor','inbox','manager'].includes(account.role)) return null;
-  const [a,b] = await Promise.all([digest(pair.slice(i+1)),digest(account.password)]);
-  return crypto.subtle.timingSafeEqual(a,b) ? account.role : null;
+const encode = value => new TextEncoder().encode(value);
+const hex = buffer => Array.from(new Uint8Array(buffer), b => b.toString(16).padStart(2,'0')).join('');
+function invitation(env,name) {
+  if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(name)) return null;
+  let rows;
+  try { rows=JSON.parse(env.STAFF_INVITES || '{}'); } catch {return null;}
+  const row=rows && Object.hasOwn(rows,name) && rows[name];
+  if (!row || !['manager','editor','inbox'].includes(row.role) ||
+      !/^[A-Za-z0-9_-]{43,128}$/.test(row.token) || !Number.isFinite(Date.parse(row.expires))) return null;
+  return row;
+}
+async function passwordHash(password,salt) {
+  const key=await crypto.subtle.importKey('raw',encode(password),'PBKDF2',false,['deriveBits']);
+  return crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-512',salt:encode(salt),iterations:100000},key,256);
+}
+async function staff(request,env,store) {
+  let pair;
+  try { pair=new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(atob(request.headers.get('authorization').match(/^Basic ([A-Za-z0-9+/=]+)$/i)[1]),c=>c.charCodeAt(0))); }
+  catch {return null;}
+  const i=pair.indexOf(':'),name=pair.slice(0,i),password=pair.slice(i+1);
+  const row=invitation(env,name);
+  if (!row || password.length>256) return null;
+  const tag=hex(await digest(row.token)), record=await store.credential(name,tag);
+  if (!record) return null;
+  const bucket=await authBucket(request,name);
+  if (!await store.reserveAuth(bucket)) return null;
+  const calculated=hex(await passwordHash(password,record.salt));
+  if (!crypto.subtle.timingSafeEqual(encode(calculated),encode(record.hash))) return null;
+  await store.releaseAuth(bucket);
+  return row.role;
+}
+async function authBucket(request,name) {
+  return hex(await digest((request.headers.get('CF-Connecting-IP')||'local')+'|'+name+'|'+Math.floor(Date.now()/600000)));
 }
 
 async function readJson(request,max) {
@@ -39,8 +62,23 @@ async function readJson(request,max) {
 export default {async fetch(request,env) {
   const url = new URL(request.url), path = url.pathname;
   const store = env.STUDIO.get(env.STUDIO.idFromName('production'));
+  if (path==='/staff/setup/' && request.method==='GET') return new Response(setupHtml,{headers:{...privateHeaders,'Content-Type':'text/html; charset=utf-8','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'"}});
+  if (path==='/staff/activate' && request.method==='POST') {
+    if (request.headers.get('origin')!==url.origin) return fail('Invalid origin.',403);
+    let d; try { d=await readJson(request,6000); } catch {return fail('Invalid request.');}
+    if (typeof d?.password!=='string' || d.password.length<15 || d.password.length>256) return fail('Use a password of 15 to 256 characters.');
+    const row=invitation(env,d.name);
+    const denied=()=>fail('Invitation invalid, expired or already used.',403);
+    if (!row || typeof d.token!=='string' || Date.parse(row.expires)<=Date.now()) return denied();
+    const tag=await digest(row.token);
+    if (!crypto.subtle.timingSafeEqual(tag,await digest(d.token))) return denied();
+    const version=hex(tag);
+    if (await store.credential(d.name,version)) return denied();
+    const salt=crypto.randomUUID(), hash=hex(await passwordHash(d.password,salt));
+    return await store.activate(d.name,version,salt,hash) ? json({saved:true},201) : denied();
+  }
   if (path === '/admin' || path.startsWith('/admin/')) {
-    const role = await staff(request,env);
+    const role = await staff(request,env,store);
     if (!role) return new Response('Staff sign-in required.',{status:401,headers:{...privateHeaders,'WWW-Authenticate':'Basic realm="HarkynB staff", charset="UTF-8"'}});
     if (request.method !== 'GET' && request.headers.get('origin')!==url.origin) return fail('Invalid origin.',403);
     if ((path==='/admin'||path==='/admin/') && request.method==='GET') return new Response(consoleHtml(role),{headers:{...privateHeaders,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'self'; img-src 'self' data:; frame-ancestors 'none'; object-src 'none'; base-uri 'none'"}});
@@ -103,8 +141,28 @@ export class Studio extends DurableObject {
   constructor(ctx,env) {
     super(ctx,env);
     this.sql = ctx.storage.sql;
+    this.sql.exec('CREATE TABLE IF NOT EXISTS credentials(name TEXT PRIMARY KEY,version TEXT,salt TEXT,hash TEXT); CREATE TABLE IF NOT EXISTS used_invites(version TEXT PRIMARY KEY)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS pages(path TEXT PRIMARY KEY,revision INTEGER,current TEXT,previous TEXT); CREATE TABLE IF NOT EXISTS media(id TEXT PRIMARY KEY,mime TEXT,bytes BLOB); CREATE TABLE IF NOT EXISTS enquiries(id TEXT UNIQUE,created TEXT,entry TEXT,status TEXT); CREATE TABLE IF NOT EXISTS limits(bucket TEXT PRIMARY KEY,n INTEGER,expires INTEGER)');
   }
+  credential(name,version) {
+    return this.sql.exec('SELECT salt,hash FROM credentials WHERE name=? AND version=?',name,version).toArray()[0] || null;
+  }
+  activate(name,version,salt,hash) {
+    return this.ctx.storage.transactionSync(()=>{
+      if (this.sql.exec('SELECT 1 FROM used_invites WHERE version=?',version).toArray().length) return false;
+      this.sql.exec('INSERT INTO used_invites VALUES(?)',version);
+      this.sql.exec('INSERT OR REPLACE INTO credentials VALUES(?,?,?,?)',name,version,salt,hash);
+      return true;
+    });
+  }
+  reserveAuth(bucket) {
+    this.sql.exec('DELETE FROM limits WHERE expires<=?',Date.now());
+    const n=this.sql.exec('SELECT n FROM limits WHERE bucket=?',bucket).toArray()[0]?.n || 0;
+    if(n>=15)return false;
+    this.sql.exec('INSERT OR REPLACE INTO limits VALUES(?,?,?)',bucket,n+1,Date.now()+600000);
+    return true;
+  }
+  releaseAuth(bucket){this.sql.exec('UPDATE limits SET n=MAX(0,n-1) WHERE bucket=?',bucket);}
   page(path) {
     const row = this.sql.exec('SELECT * FROM pages WHERE path=?',path).toArray()[0];
     return row ? {revision:row.revision,current:JSON.parse(row.current),canRestore:!!row.previous} : {revision:0,current:{text:{},images:{}},canRestore:false};

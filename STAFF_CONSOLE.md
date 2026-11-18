@@ -2,13 +2,16 @@
 
 Wrangler builds the public pages and applies the SQLite Durable Object migration. The Worker stores published photos, revisions and private enquiries in one named Durable Object.
 
-## Enable staff access
+## Invite staff
 
-In Cloudflare open the harkynb-production Worker, then Settings, Variables and Secrets. Add a Secret named STAFF_ACCOUNTS. Set its value to a JSON object keyed by individual usernames. Example structure:
+Deploy the Worker before sending invitations. The new Worker ignores STAFF_ACCOUNTS. Remove that old secret. If you previously used the literal example passwords on a live Worker, remove that secret immediately.
 
-    {"editor-name":{"password":"REPLACE_WITH_RANDOM_PASSWORD","role":"editor"},"inbox-name":{"password":"REPLACE_WITH_DIFFERENT_RANDOM_PASSWORD","role":"inbox"}}
+1. On your own computer in the repository, run `node scripts/staff-invite.mjs samuel manager`. Substitute a username and the role editor, inbox or manager. The command prints a private link and a JSON entry. Each invitation lasts 24 hours.
+2. In Cloudflare open the harkynb-production Worker, Settings, Variables and Secrets. Save the generated JSON as a **Secret** named STAFF_INVITES and deploy the configuration. For more people merge entries into one JSON object. Keep the current roster in a password manager so you can retain existing entries when updating the secret.
+3. Send each link privately to its named recipient. They open it, choose and confirm their own password, then sign in at /admin/. Each invitation works once. Only salted password hashes are stored.
+4. Keep activated users in the roster. Invitation expiry only limits initial activation. To revoke access, remove the user's entry and deploy the updated secret. To reset a forgotten password, generate a fresh invite for the same username and replace that entry. The previous password immediately stops working once the updated secret is deployed.
 
-Use individual random passwords. The editor role can publish, inbox can read and resolve enquiries across brands, and manager can do both. Remove an account to revoke access. Open /admin/ over HTTPS and use the browser sign-in prompt. On shared devices use a private window and close it after use. An absent secret leaves the console locked.
+Editor can publish, inbox can review enquiries, and manager can do both. Staff with old accounts need invitations. Use a private browser window on shared devices and close it when finished.
 
 ## Verify on the deployment
 
