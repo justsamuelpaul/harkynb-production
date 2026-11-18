@@ -17,3 +17,9 @@ Keep the existing public URLs. Use a Worker API for publishing and form intake, 
 ## First working milestone
 
 Deliver one complete workflow for HarkynBShotIt. A staff member publishes an updated portfolio photo, a visitor submits a shoot enquiry from that page, and the assigned team can read the completed form in the console. Use that workflow to verify permissions, publishing, and delivery before extending it to the other brands.
+
+## Photography supplied by HarkynB
+
+Use the [Website images folder](https://drive.google.com/drive/folders/1tpzHlxwRkKqeyKbfqz2qsMYEJlsexDtU?usp=sharing) as the source for the first photo selection. Review the pictures before assigning them. Match each photo to its actual project, brand or event. Use a wide image for a homepage feature only if its subject remains visible on mobile.
+
+Give each placement a stable identifier and store the selected media item, alt text, credit and crop with it. In the staff console, show the page and placement beside its current image. Allow an editor to upload or choose a replacement, preview desktop and mobile crops, and publish. Replacing one placement must leave other uses of the original photo intact. Verify the published replacement on Cloudflare and test restoring the previous selection.
