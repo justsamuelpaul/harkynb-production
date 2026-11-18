@@ -73,6 +73,8 @@ export class Studio extends DurableObject {
     this.sql = ctx.storage.sql;
     this.sql.exec('CREATE TABLE IF NOT EXISTS credentials(name TEXT PRIMARY KEY,version TEXT,salt TEXT,hash TEXT); CREATE TABLE IF NOT EXISTS used_invites(version TEXT PRIMARY KEY)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS pages(path TEXT PRIMARY KEY,revision INTEGER,current TEXT,previous TEXT); CREATE TABLE IF NOT EXISTS media(id TEXT PRIMARY KEY,mime TEXT,bytes BLOB); CREATE TABLE IF NOT EXISTS enquiries(id TEXT UNIQUE,created TEXT,entry TEXT,status TEXT); CREATE TABLE IF NOT EXISTS limits(bucket TEXT PRIMARY KEY,n INTEGER,expires INTEGER)');
+    // Assignment and per-staff 'seen' state live in their own tables so the original enquiries schema needs no migration.
+    this.sql.exec('CREATE TABLE IF NOT EXISTS assignments(id TEXT PRIMARY KEY,user TEXT,name TEXT); CREATE TABLE IF NOT EXISTS seen(user TEXT PRIMARY KEY,cursor INTEGER)');
   }
   credential(name,version) {
     return this.sql.exec('SELECT salt,hash FROM credentials WHERE name=? AND version=?',name,version).toArray()[0] || null;
@@ -161,8 +163,41 @@ export class Studio extends DurableObject {
       return true;
     });
   }
-  inbox(before) {
-    return this.sql.exec('SELECT rowid AS cursor,* FROM enquiries WHERE rowid < ? ORDER BY rowid DESC LIMIT 30',before || Number.MAX_SAFE_INTEGER).toArray().map(r=>({...r,entry:JSON.parse(r.entry)}));
+  // filter: {team, status, assigned: 'me'|'none'|'', user}
+  inbox(before,filter={}) {
+    const where=['e.rowid < ?'], args=[before || Number.MAX_SAFE_INTEGER];
+    if (filter.team) {where.push("json_extract(e.entry,'$.team') = ?"); args.push(filter.team);}
+    if (filter.status==='open') where.push("e.status <> 'Resolved'");
+    else if (filter.status) {where.push('e.status = ?'); args.push(filter.status);}
+    if (filter.assigned==='me') {where.push('a.user = ?'); args.push(filter.user);}
+    else if (filter.assigned==='none') where.push('a.user IS NULL');
+    return this.sql.exec('SELECT e.rowid AS cursor,e.id,e.created,e.entry,e.status,a.user AS assignee,a.name AS assigneeName FROM enquiries e LEFT JOIN assignments a ON a.id=e.id WHERE '+where.join(' AND ')+' ORDER BY e.rowid DESC LIMIT 30',...args)
+      .toArray().map(r=>({...r,entry:JSON.parse(r.entry)}));
   }
-  setStatus(id,status){this.sql.exec('UPDATE enquiries SET status=? WHERE id=?',status,id);return {status};}
+  // change: {status?, assignee?: {id,name} | null}
+  updateEnquiry(id,change) {
+    if (!this.sql.exec('SELECT 1 FROM enquiries WHERE id=?',id).toArray().length) return null;
+    this.ctx.storage.transactionSync(()=>{
+      if (change.status) this.sql.exec('UPDATE enquiries SET status=? WHERE id=?',change.status,id);
+      if (change.assignee===null) this.sql.exec('DELETE FROM assignments WHERE id=?',id);
+      else if (change.assignee) this.sql.exec('INSERT OR REPLACE INTO assignments VALUES(?,?,?)',id,change.assignee.id,change.assignee.name);
+    });
+    return this.sql.exec('SELECT e.status,a.user AS assignee,a.name AS assigneeName FROM enquiries e LEFT JOIN assignments a ON a.id=e.id WHERE e.id=?',id).toArray()[0];
+  }
+  setStatus(id,status){return this.updateEnquiry(id,{status});}
+  // Dashboard alert counts. "unseen" is per staff member; nothing personal is returned.
+  alerts(user) {
+    const cursor=this.sql.exec('SELECT cursor FROM seen WHERE user=?',user).toArray()[0]?.cursor || 0;
+    const count=(q,...a)=>this.sql.exec(q,...a).toArray()[0].n;
+    return {
+      unseen:count('SELECT COUNT(*) AS n FROM enquiries WHERE rowid > ?',cursor),
+      open:count("SELECT COUNT(*) AS n FROM enquiries WHERE status <> 'Resolved'"),
+      mine:count("SELECT COUNT(*) AS n FROM enquiries e JOIN assignments a ON a.id=e.id WHERE a.user=? AND e.status <> 'Resolved'",user)
+    };
+  }
+  markSeen(user) {
+    const top=this.sql.exec('SELECT MAX(rowid) AS n FROM enquiries').toArray()[0].n || 0;
+    this.sql.exec('INSERT OR REPLACE INTO seen VALUES(?,?)',user,top);
+    return this.alerts(user);
+  }
 }

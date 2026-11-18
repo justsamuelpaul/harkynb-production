@@ -69,12 +69,39 @@ export default {async fetch(request,env){
   if(method==='GET' && ['/admin','/admin/'].includes(path))return html(consoleHtml(role).replace('href="/">View website','href="'+site+'">View website').replace('</header>',(role==='manager'?'<a href="/team">Staff access</a>':'')+logout+'</header>'));
   if(role!=='inbox' && method==='GET' && (path==='/editor-pages.json'||/^\/media\/[0-9a-f-]{36}$/.test(path)||path.startsWith('/art/')))return env.SITE.fetch(new URL(path,site));
   const store=env.STUDIO.get(env.STUDIO.idFromName('production'));
+    // Every approved account sees alert counts (no personal details). Only inbox staff and managers read enquiries.
+    if (path==='/admin/alerts' && method==='GET') return json({...await store.alerts(user.id),canRead:role!=='editor'});
+    if (path==='/admin/alerts/seen' && method==='POST') return json({...await store.markSeen(user.id),canRead:role!=='editor'});
+    // Staff who can be assigned enquiries: anyone with inbox access, plus the owner.
+    const inboxStaff = async () => (await accounts.list()).filter(u=>u.id===env.OWNER_ACCOUNT_ID || ['inbox','manager'].includes(u.role)).map(u=>({id:u.id,name:u.name}));
+    if (role!=='editor') {
+      if (path==='/admin/staff' && method==='GET') return json({me:user.id,staff:await inboxStaff()});
+    }
     if (path==='/admin/enquiries' && role!=='editor') {
-      if (request.method==='GET') return json(await store.inbox(Math.max(0,Number(url.searchParams.get('before'))||0)));
+      if (request.method==='GET') {
+        const q=url.searchParams, team=q.get('team')||'', status=q.get('status')||'', assigned=q.get('assigned')||'';
+        if (!['','production','onevoicefm','shotit','academy','summit'].includes(team) || !['','open','New','In progress','Resolved'].includes(status) || !['','me','none'].includes(assigned)) return fail('Invalid filter.');
+        return json(await store.inbox(Math.max(0,Number(q.get('before'))||0),{team,status,assigned,user:user.id}));
+      }
       if (request.method==='POST') {
         let d; try { d=await readJson(request,1000); } catch {return fail('Invalid request.');}
-        if (!uuid.test(d?.id)||!['New','Resolved'].includes(d.status)) return fail('Invalid enquiry.');
-        return json(await store.setStatus(d.id,d.status));
+        if (!uuid.test(d?.id)) return fail('Invalid enquiry.');
+        const change={};
+        if (d.status!==undefined) {
+          if (!['New','In progress','Resolved'].includes(d.status)) return fail('Invalid status.');
+          change.status=d.status;
+        }
+        if (d.assignee!==undefined) {
+          if (d.assignee==='') change.assignee=null;
+          else {
+            const person=(await inboxStaff()).find(u=>u.id===d.assignee);
+            if (!person) return fail('Choose a staff member with inbox access.');
+            change.assignee=person;
+          }
+        }
+        if (!Object.keys(change).length) return fail('Nothing to change.');
+        const result=await store.updateEnquiry(d.id,change);
+        return result ? json(result) : fail('Unknown enquiry.',404);
       }
     }
     const loadManifest = async () => (await env.SITE.fetch(new URL("/editor-pages.json",site))).json();

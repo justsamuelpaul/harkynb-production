@@ -84,11 +84,42 @@ assert.equal(inbox.length,1);assert.equal(inbox[0].entry.message,data.message);
 await adminJson('/admin/enquiries',owner,{id:data.requestId,status:'Resolved'});
 assert.equal(studio.inbox(0)[0].status,'Resolved');
 
+// Dashboard alerts reach every approved account. Editors get counts only and cannot read, assign or list staff.
+const alertsFor=async c=>(await adminJson('/admin/alerts',c)).json();
+assert.deepEqual(await alertsFor(member),{unseen:1,open:0,mine:0,canRead:false});
+assert.equal((await adminJson('/admin/alerts/seen',member,{})).status,200);
+assert.equal((await alertsFor(member)).unseen,0);
+assert.equal((await adminCall('/admin/staff',member)).status,403);
+assert.equal((await adminJson('/admin/enquiries',member,{id:data.requestId,status:'New'})).status,403);
+
 assert.equal((await adminCall('/team',owner,{id:memberId,role:'inbox'})).status,303);
 assert.equal((await (await adminCall('/admin/enquiries',member)).json())[0].id,data.requestId);
+
+// Brand and status filters, assignment to inbox staff, and per-person unseen counts.
+const more=[{team:'academy',name:'Academy visitor'},{team:'summit',name:'Summit visitor'}].map(x=>({...data,...x,requestId:crypto.randomUUID()}));
+for(const m of more)assert.equal((await call('/api/enquiries',null,m)).status,201);
+assert.equal((await alertsFor(owner)).unseen,3);
+assert.deepEqual(await alertsFor(member),{unseen:2,open:2,mine:0,canRead:true});
+const list=async(c,q='')=>(await adminJson('/admin/enquiries'+q,c)).json();
+assert.deepEqual((await list(owner,'?team=academy')).map(r=>r.entry.name),['Academy visitor']);
+assert.equal((await list(owner,'?status=open')).length,2);
+assert.equal((await list(owner,'?status=Resolved'))[0].id,data.requestId);
+assert.equal((await adminJson('/admin/enquiries?team=nope',owner)).status,400);
+const {staff}=await (await adminJson('/admin/staff',owner)).json();
+assert.deepEqual(staff.map(s=>s.name).sort(),['member','owner']);
+assert.equal((await adminJson('/admin/enquiries',owner,{id:more[0].requestId,assignee:crypto.randomUUID()})).status,400);
+assert.deepEqual(await (await adminJson('/admin/enquiries',owner,{id:more[0].requestId,assignee:memberId,status:'In progress'})).json(),{status:'In progress',assignee:memberId,assigneeName:'member'});
+assert.deepEqual((await list(member,'?assigned=me')).map(r=>r.id),[more[0].requestId]);
+assert.deepEqual((await list(member,'?assigned=none&status=open')).map(r=>r.id),[more[1].requestId]);
+assert.equal((await alertsFor(member)).mine,1);
+assert.equal((await (await adminJson('/admin/alerts/seen',member,{})).json()).unseen,0);
+assert.equal((await adminJson('/admin/enquiries',owner,{id:more[0].requestId,assignee:''})).status,200);
+assert.equal((await alertsFor(member)).mine,0);
+assert.equal((await adminJson('/admin/enquiries',owner,{id:crypto.randomUUID(),status:'New'})).status,404);
+assert.equal((await adminJson('/admin/enquiries',owner,{id:more[1].requestId,status:'Done'})).status,400);
 assert.equal((await adminCall('/admin/page?path=/',member)).status,403);
 assert.equal((await adminCall('/admin/attention',member)).status,403);
 assert.equal((await adminCall('/logout',member,{})).status,303);
 assert.equal((await adminCall('/admin/enquiries',member)).status,401);
 assert.equal((await adminCall('/login','',{name:'member',password:'my testing password'})).status,303);
-console.log('PASS: separate portal signup, owner approval, login, shared inbox, role checks and logout.');
+console.log('PASS: separate portal signup, owner approval, login, shared inbox, alerts, brand filters, assignment, role checks and logout.');

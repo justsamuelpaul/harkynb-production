@@ -107,26 +107,79 @@ if ($('editor')) {
   $('edit-form').hidden=true;
   run(async()=>{pages=await api('/editor-pages.json');for(const [path,def] of Object.entries(pages)) $('page').add(new Option(def.title+' · '+path,path));await loadPage();await loadAttention();})();
 }
+const teamNames={production:'HarkynB Production',onevoicefm:'Onevoicefm',shotit:'HarkynBShotIt',academy:'Creators Academy',summit:'Future Creators Summit'};
+let staff=[], me='';
 function addEntry(row) {
-  const details=document.createElement('details'), summary=document.createElement('summary'), dl=document.createElement('dl'), button=document.createElement('button');
-  const title=()=>{summary.textContent=[row.status,row.entry.name,row.entry.team,new Date(row.created).toLocaleDateString()].join(' · ');button.textContent=row.status==='New'?'Mark resolved':'Reopen';};
-  title();for(const [key,value] of Object.entries({...row.entry,received:new Date(row.created).toLocaleString()})) {
-    if (!value) continue; const dt=document.createElement('dt'), dd=document.createElement('dd');
-    dt.textContent=key[0].toUpperCase()+key.slice(1);dd.textContent=value;dl.append(dt,dd);
+  const summary=el('summary'), dl=el('dl');
+  const status=el('select',{},...['New','In progress','Resolved'].map(s=>new Option(s,s)));
+  const owner=el('select',{},new Option('Unassigned',''),...staff.map(s=>new Option(s.id===me?s.name+' (me)':s.name,s.id)));
+  if (row.assignee && !staff.some(s=>s.id===row.assignee)) owner.add(new Option(row.assigneeName+' (no inbox access)',row.assignee));
+  const title=()=>{
+    status.value=row.status; owner.value=row.assignee||'';
+    summary.textContent=[row.status,row.entry.name,teamNames[row.entry.team]||row.entry.team,row.assigneeName?'Assigned to '+row.assigneeName:'Unassigned',new Date(row.created).toLocaleDateString()].join(' · ');
+  };
+  for (const [key,value] of Object.entries({...row.entry,team:teamNames[row.entry.team]||row.entry.team,received:new Date(row.created).toLocaleString()})) {
+    if (value) dl.append(el('dt',{textContent:key[0].toUpperCase()+key.slice(1)}),el('dd',{textContent:value}));
   }
-  button.onclick=run(async()=>{button.disabled=true;try{const r=await api('/admin/enquiries',{id:row.id,status:row.status==='New'?'Resolved':'New'});row.status=r.status;title();}finally{button.disabled=false;}});
-  details.append(summary,dl,button);$('entries').append(details);
+  const change=async data=>{
+    status.disabled=owner.disabled=true;
+    try {Object.assign(row,await api('/admin/enquiries',{id:row.id,...data})); say('Enquiry updated.');}
+    finally {status.disabled=owner.disabled=false; title();}
+    refreshAlerts();
+  };
+  status.onchange=run(()=>change({status:status.value}));
+  owner.onchange=run(()=>change({assignee:owner.value}));
+  title();
+  $('entries').append(el('details',{},summary,dl,el('div',{className:'enquiry-actions'},el('label',{},'Status ',status),el('label',{},'Assigned to ',owner))));
 }
 let inboxLoad=0;
 async function loadInbox(more=false) {
   const ticket=++inboxLoad;
-  const rows=await api('/admin/enquiries'+(more?'?before='+cursor:''));
-  if(ticket!==inboxLoad)return;
-  if(!more)$('entries').replaceChildren();for(const row of rows)addEntry(row);
-  if(!more && !rows.length)$('entries').textContent='No enquiries yet.';
-  cursor=rows.at(-1)?.cursor;$('older').hidden=rows.length<30;
+  if (!staff.length) ({staff,me}=await api('/admin/staff'));
+  const q=new URLSearchParams({team:$('f-team').value,status:$('f-status').value,assigned:$('f-assigned').value});
+  if (more) q.set('before',cursor);
+  const rows=await api('/admin/enquiries?'+q);
+  if (ticket!==inboxLoad) return;
+  if (!more) $('entries').replaceChildren();
+  rows.forEach(addEntry);
+  if (!more && !rows.length) $('entries').textContent='No enquiries match these filters.';
+  cursor=rows.at(-1)?.cursor; $('older').hidden=rows.length<30;
+  if (!more) showAlerts(await api('/admin/alerts/seen',{}));
 }
+
+// Dashboard alerts: every approved staff member sees counts; polling runs while the console is open.
+let lastUnseen=null;
+const desktopReady=()=>'Notification' in window && Notification.permission==='granted';
+function showAlerts(a) {
+  if ($('badge')) {$('badge').hidden=!a.unseen; $('badge').textContent=a.unseen;}
+  document.title=(a.unseen?'('+a.unseen+') ':'')+'Staff console | HarkynB Production';
+  const parts=[];
+  if (a.unseen) parts.push(a.unseen+(a.unseen===1?' new enquiry':' new enquiries')+' since you last checked');
+  if (a.mine) parts.push(a.mine+' assigned to you and still open');
+  if (parts.length && a.open) parts.push(a.open+' open in total');
+  $('alerts').hidden=!parts.length;
+  $('alerts-text').textContent=parts.join(' · ')+(parts.length && !a.canRead?'. Inbox staff will follow these up.':'');
+  $('alerts-seen').hidden=!a.unseen;
+  if (lastUnseen!==null && a.unseen>lastUnseen && desktopReady() && document.hidden) new Notification('New HarkynB enquiry',{body:a.unseen+' unread in the staff console',tag:'harkynb-enquiries'});
+  lastUnseen=a.unseen;
+}
+const refreshAlerts=run(async()=>showAlerts(await api('/admin/alerts')));
+$('alerts-seen').onclick=run(async()=>{
+  if ($('inbox') && $('inbox').hidden) {document.querySelector('[data-tab="inbox"]').click(); return;}
+  showAlerts(await api('/admin/alerts/seen',{}));
+});
+if ('Notification' in window && Notification.permission==='default') {
+  $('desktop-alerts').hidden=false;
+  $('desktop-alerts').onclick=run(async()=>{await Notification.requestPermission(); $('desktop-alerts').hidden=true; say(desktopReady()?'Desktop alerts are on while the console is open.':'Desktop alerts were not allowed.');});
+}
+setInterval(refreshAlerts,30000);
+document.addEventListener('visibilitychange',()=>{if (!document.hidden) refreshAlerts();});
+
 const tabs=[...document.querySelectorAll('[data-tab]')];
 tabs.forEach(tab=>tab.onclick=run(async()=>{for(const t of tabs){const active=t===tab;t.setAttribute('aria-pressed',active);$(t.dataset.tab).hidden=!active;}say('');if(tab.dataset.tab==='inbox')await loadInbox();}));
-if ($('inbox')) {$('refresh').onclick=run(()=>loadInbox());$('older').onclick=run(()=>loadInbox(true));}
+if ($('inbox')) {
+  $('refresh').onclick=run(()=>loadInbox()); $('older').onclick=run(()=>loadInbox(true));
+  for (const id of ['f-team','f-status','f-assigned']) $(id).onchange=run(()=>loadInbox());
+}
 tabs[0].click();
+refreshAlerts();

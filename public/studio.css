@@ -1,2 +1,5 @@
 .attention,.orphan{border:2px solid #c2410c;border-radius:6px;padding:.75rem 1rem;margin:.75rem 0}
 .orphan-photo{display:block;max-width:240px;height:auto}
+.badge{display:inline-block;min-width:1.4em;padding:0 .4em;border-radius:999px;background:#c2410c;color:#fff;font-size:.8em;text-align:center}
+.alerts{border-left:4px solid #c2410c;background:#fff4ed;color:#1c1917;padding:.6rem .9rem;margin:.75rem 0}
+.filters,.enquiry-actions{display:flex;flex-wrap:wrap;gap:.75rem;align-items:end;margin:.75rem 0}
