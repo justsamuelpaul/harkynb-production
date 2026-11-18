@@ -35,5 +35,8 @@
         "Accounts"
       ]
     }
-  ]
+  ],
+  "vars": {
+    "OWNER_ACCOUNT_ID": "fdfed80a-04eb-4145-9245-9f332a525323"
+  }
 }
