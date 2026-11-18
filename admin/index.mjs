@@ -58,7 +58,8 @@ export default {async fetch(request,env){
   const user=key && await accounts.account(key);
   if(!user)return ['/admin','/admin/','/team'].includes(path) && method==='GET'?redirect('/login'):fail('Please log in.',401);
   const role=user.id===env.OWNER_ACCOUNT_ID?'manager':user.role;
-  if(role==='pending')return method==='GET' && ['/admin','/admin/'].includes(path)?html(pending(user)):fail('Staff approval required.',403);
+  if(role==='pending')return method==='GET' && ['/admin','/admin/','/team'].includes(path)?html(pending(user)):fail('Staff approval required.',403);
+  if(path==='/team' && method==='GET' && role!=='manager')return redirect('/admin/');
   if(path==='/team' && role==='manager'){
     if(method==='GET')return html(team(await accounts.list(),env.OWNER_ACCOUNT_ID));
     const f=await fields(request),id=f?.get('id'),r=f?.get('role');

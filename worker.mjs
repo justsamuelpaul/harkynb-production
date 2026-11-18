@@ -1,6 +1,3 @@
-import {setupHtml} from './staff-setup.mjs';
-import {consoleHtml} from './studio-view.mjs';
-
 const privateHeaders = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const json = (body,status=200) => Response.json(body,{status,headers:privateHeaders});
 const fail = (error,status=400) => json({error},status);
@@ -8,47 +5,6 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
 const teams = ['production','onevoicefm','shotit','academy','summit'];
 const fields = ['team','service','name','email','phone','organisation','date','location','budget','message','method'];
 const digest = s => crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
-
-const encode = value => new TextEncoder().encode(value);
-const hex = buffer => Array.from(new Uint8Array(buffer), b => b.toString(16).padStart(2,'0')).join('');
-function readRoster(binding) {
-  let rows=binding;
-  if (typeof rows==='string') {
-    try {rows=JSON.parse(rows);} catch {return null;}
-  }
-  return rows && typeof rows==='object' && !Array.isArray(rows) ? rows : null;
-}
-function invitation(env,name) {
-  if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(name)) return null;
-  const rows=readRoster(env.STAFF_INVITES);
-  const row=rows && Object.hasOwn(rows,name) && rows[name];
-  if (!row || !['manager','editor','inbox'].includes(row.role) ||
-      !/^[A-Za-z0-9_-]{43,128}$/.test(row.token) || !Number.isFinite(Date.parse(row.expires))) return null;
-  return row;
-}
-async function passwordHash(password,salt) {
-  const key=await crypto.subtle.importKey('raw',encode(password),'PBKDF2',false,['deriveBits']);
-  return crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-512',salt:encode(salt),iterations:100000},key,256);
-}
-async function staff(request,env,store) {
-  let pair;
-  try { pair=new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(atob(request.headers.get('authorization').match(/^Basic ([A-Za-z0-9+/=]+)$/i)[1]),c=>c.charCodeAt(0))); }
-  catch {return null;}
-  const i=pair.indexOf(':'),name=pair.slice(0,i),password=pair.slice(i+1);
-  const row=invitation(env,name);
-  if (!row || password.length>256) return null;
-  const tag=hex(await digest(row.token)), record=await store.credential(name,tag);
-  if (!record) return null;
-  const bucket=await authBucket(request,name);
-  if (!await store.reserveAuth(bucket)) return null;
-  const calculated=hex(await passwordHash(password,record.salt));
-  if (!crypto.subtle.timingSafeEqual(encode(calculated),encode(record.hash))) return null;
-  await store.releaseAuth(bucket);
-  return row.role;
-}
-async function authBucket(request,name) {
-  return hex(await digest((request.headers.get('CF-Connecting-IP')||'local')+'|'+name+'|'+Math.floor(Date.now()/600000)));
-}
 
 async function readJson(request,max) {
   if (!request.headers.get('content-type')?.startsWith('application/json')) throw Error('Use JSON.');
@@ -68,50 +24,15 @@ async function readJson(request,max) {
 export default {async fetch(request,env) {
   const url = new URL(request.url), path = url.pathname;
   const store = env.STUDIO.get(env.STUDIO.idFromName('production'));
-  if (path==='/staff/setup/' && request.method==='GET') return new Response(setupHtml,{headers:{...privateHeaders,'Content-Type':'text/html; charset=utf-8','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'"}});
-  if (path==='/staff/activate' && request.method==='POST') {
-    if (request.headers.get('origin')!==url.origin) return fail('Invalid origin.',403);
-    let d; try { d=await readJson(request,6000); } catch {return fail('Invalid request.');}
-    if (typeof d?.password!=='string' || d.password.length<15 || d.password.length>256) return fail('Use a password of 15 to 256 characters.');
-    const row=invitation(env,d.name);
-    if (!readRoster(env.STAFF_INVITES)) return fail('Staff invitations are not configured correctly on this Worker. Check the production STAFF_INVITES secret and deploy.',503);
-    const denied=()=>fail('This username and invitation code do not match the deployed invitation. Reopen the original invitation link or ask for a new one.',403);
-    const used=()=>fail('This invitation was already used. Open /admin/ and sign in with the password you set.',403);
-    if (!row || typeof d.token!=='string') return denied();
-    const tag=await digest(row.token);
-    if (!crypto.subtle.timingSafeEqual(tag,await digest(d.token))) return denied();
-    const version=hex(tag);
-    if (await store.credential(d.name,version)) return used();
-    if (Date.parse(row.expires)<=Date.now()) return fail('This invitation has expired. Ask for a new invitation.',403);
-    const salt=crypto.randomUUID(), hash=hex(await passwordHash(d.password,salt));
-    return await store.activate(d.name,version,salt,hash) ? json({saved:true},201) : used();
+  const portal = 'https://harkynb-admin.justsamuelpaul.workers.dev';
+  if (['GET','HEAD'].includes(request.method)) {
+    const destination = new Map([
+      ['/admin','/admin/'], ['/admin/','/admin/'], ['/team','/team'],
+      ['/signup','/signup'], ['/login','/login'], ['/staff/setup','/signup'], ['/staff/setup/','/signup']
+    ]).get(path);
+    if (destination) return new Response(null,{status:302,headers:{...privateHeaders,Location:portal+destination+'#','Referrer-Policy':'no-referrer'}});
   }
-  if (path === '/admin' || path.startsWith('/admin/')) {
-    const role = await staff(request,env,store);
-    if (!role) return new Response('Staff sign-in required.',{status:401,headers:{...privateHeaders,'WWW-Authenticate':'Basic realm="HarkynB staff", charset="UTF-8"'}});
-    if (request.method !== 'GET' && request.headers.get('origin')!==url.origin) return fail('Invalid origin.',403);
-    if ((path==='/admin'||path==='/admin/') && request.method==='GET') return new Response(consoleHtml(role),{headers:{...privateHeaders,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'self'; img-src 'self' data:; frame-ancestors 'none'; object-src 'none'; base-uri 'none'"}});
-    if (path==='/admin/enquiries' && role!=='editor') {
-      if (request.method==='GET') return json(await store.inbox(Math.max(0,Number(url.searchParams.get('before'))||0)));
-      if (request.method==='POST') {
-        let d; try { d=await readJson(request,1000); } catch {return fail('Invalid request.');}
-        if (!uuid.test(d?.id)||!['New','Resolved'].includes(d.status)) return fail('Invalid enquiry.');
-        return json(await store.setStatus(d.id,d.status));
-      }
-    }
-    if (path==='/admin/page' && role!=='inbox') {
-      const page = url.searchParams.get('path');
-      const manifest = await (await env.ASSETS.fetch(new URL('/editor-pages.json',url))).json();
-      if (!Object.hasOwn(manifest,page)) return fail('Unknown page.',404);
-      if (request.method==='GET') return json(await store.page(page));
-      if (request.method==='POST') {
-        let d; try { d=await readJson(request,1250000); } catch {return fail('Invalid or oversized change.');}
-        const reply = await store.publish(page,manifest[page],d);
-        return json(reply,reply.status || 200);
-      }
-    }
-    return fail('Unavailable for this account.',403);
-  }
+  if (path==='/admin' || path.startsWith('/admin/') || path.startsWith('/staff/')) return fail('Use the staff portal.',410);
   if (path==='/api/enquiries' && request.method==='POST') {
     if (request.headers.get('origin')!==url.origin) return fail('Invalid origin.',403);
     let d; try {d=await readJson(request,18000);} catch {return fail('Invalid submission.');}
