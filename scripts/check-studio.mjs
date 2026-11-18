@@ -56,3 +56,27 @@ console.log('PASS: staff roles, publishing, stale edit rejection, photo retrieva
 delete roster.editor;
 env.STAFF_INVITES=JSON.stringify(roster);
 assert.equal((await call('/admin/','editor:password-for-testing-editor')).status,401);
+
+const {default:admin,Accounts}=await import('../admin/index.mjs');
+const accounts=new Accounts(ctx,{});
+const bindings={IDENTITY:{get:()=>accounts,idFromName:x=>x},STUDIO:env.STUDIO,SITE:env.ASSETS};
+const adminCall=(path,cookie='',form=null)=>admin.fetch(new Request(origin+path,{
+  method:form?'POST':'GET',headers:{origin,cookie},body:form?new URLSearchParams(form):undefined
+}),bindings);
+const registerStaff=async name=>{
+  const response=await adminCall('/signup','',{name,password:'my testing password',confirm:'my testing password'});
+  assert.equal(response.status,303);
+  return response.headers.get('set-cookie').split(';')[0];
+};
+assert.match(await (await adminCall('/')).text(),/Create a staff account/);
+const owner=await registerStaff('owner'), member=await registerStaff('member');
+assert.equal((await adminCall('/admin/enquiries',member)).status,403);
+bindings.OWNER_ACCOUNT_ID=accounts.list().find(row=>row.name==='owner').id;
+const memberId=accounts.list().find(row=>row.name==='member').id;
+assert.equal((await adminCall('/team',owner,{id:memberId,role:'inbox'})).status,303);
+assert.equal((await (await adminCall('/admin/enquiries',member)).json())[0].id,data.requestId);
+assert.equal((await adminCall('/admin/page?path=/',member)).status,403);
+assert.equal((await adminCall('/logout',member,{})).status,303);
+assert.equal((await adminCall('/admin/enquiries',member)).status,401);
+assert.equal((await adminCall('/login','',{name:'member',password:'my testing password'})).status,303);
+console.log('PASS: separate portal signup, owner approval, login, shared inbox, role checks and logout.');

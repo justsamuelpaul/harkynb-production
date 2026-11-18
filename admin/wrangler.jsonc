@@ -1,0 +1,33 @@
+{
+  "name": "harkynb-admin",
+  "main": "index.mjs",
+  "compatibility_date": "2026-11-17",
+  "workers_dev": true,
+  "services": [
+    {
+      "binding": "SITE",
+      "service": "harkynb-production"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "STUDIO",
+        "class_name": "Studio",
+        "script_name": "harkynb-production"
+      },
+      {
+        "name": "IDENTITY",
+        "class_name": "Accounts"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "accounts-v1",
+      "new_sqlite_classes": [
+        "Accounts"
+      ]
+    }
+  ]
+}

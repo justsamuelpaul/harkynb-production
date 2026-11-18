@@ -1,23 +1,13 @@
-# HarkynB staff console
+# HarkynB staff portal
 
-Wrangler builds the public pages and applies the SQLite Durable Object migration. The Worker stores published photos, revisions and private enquiries in one named Durable Object.
+Create a second Cloudflare Worker named **harkynb-admin** in the account that hosts **harkynb-production**. Connect the same GitHub repository and main branch using root directory `admin`, blank build command and deploy command `npx wrangler deploy`. Alternatively run `npx wrangler deploy --config admin/wrangler.jsonc` from the repository root in an authenticated terminal.
 
-## Invite staff
+The admin Worker serves the login page at / and registration at /signup. It uses its own SQLite Durable Object for accounts and sessions. A service binding retrieves the website assets and an external Durable Object binding accesses the existing published pages, photos and private enquiries. The public Worker must already exist.
 
-Deploy the Worker before sending invitations. The new Worker ignores STAFF_ACCOUNTS. Remove that old secret. If you previously used the literal example passwords on a live Worker, remove that secret immediately.
+## First manager
 
-1. On your own computer in the repository, run `node scripts/staff-invite.mjs samuel manager`. Substitute a username and the role editor, inbox or manager. The command prints a private link and a JSON entry. Each invitation lasts 24 hours.
-2. In Cloudflare open the harkynb-production Worker, Settings, Variables and Secrets. Save the generated JSON as a **Secret** named STAFF_INVITES and deploy the configuration. For more people merge entries into one JSON object. Keep the current roster in a password manager so you can retain existing entries when updating the secret.
-3. Send each link privately to its named recipient. They open it, choose and confirm their own password, then sign in at /admin/. Each invitation works once. Only salted password hashes are stored.
-4. Keep activated users in the roster. Invitation expiry only limits initial activation. To revoke access, remove the user's entry and deploy the updated secret. To reset a forgotten password, generate a fresh invite for the same username and replace that entry. The previous password immediately stops working once the updated secret is deployed.
+Register your own username and password on the new Worker. The pending screen displays your account ID. Set the **plain text** variable OWNER_ACCOUNT_ID on the admin Worker to that exact ID and deploy. Alternatively set vars.OWNER_ACCOUNT_ID in admin/wrangler.jsonc in the repository and deploy. This ID is an identifier and does not grant sign-in. Keep the setting across deployments.
 
-Editor can publish, inbox can review enquiries, and manager can do both. Staff with old accounts need invitations. Use a private browser window on shared devices and close it when finished.
+Once approved, open Staff access. Verify the account ID with each staff member before selecting their role. Editor can publish, inbox can review enquiries, manager can do both and approve colleagues. Select pending to remove console access. Staff choose their own passwords. Sessions expire after eight hours or on logout. This release has no self-service forgotten-password flow.
 
-## Verify on the deployment
-
-1. Choose a page and select a heading, paragraph or image. Change text or choose a JPEG, PNG or WebP and supply a description. Uploads are compressed before publication.
-2. Publish change and open the page on desktop and mobile. Restore previous version switches that page back one revision. Each page can also display an additional photograph after its first section.
-3. Submit a booking, refresh Enquiries and open the new entry. Confirm the team, service and message, then mark it resolved. Test access with both editor and inbox roles.
-4. Check account access and the company's retention arrangements before accepting real customer information.
-
-Use Wrangler dev for a local Worker preview. The static preview alone does not run APIs. Remaining features include Drive photo placement, crop controls, media library reuse, adding new portfolio or news entries and assigning enquiries.
+The new portal does not use STAFF_INVITES. Existing passwords from the original console are separate. The public Worker retains its original routes during cutover. After verifying the new portal, disable the legacy STAFF_INVITES secret on the public Worker. Check a photo edit and restore, an enquiry and staff role restrictions on the deployed portal.

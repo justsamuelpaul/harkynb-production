@@ -31,7 +31,7 @@ async function loadPage() {
   for(const [key,p] of Object.entries(def.photos)) options.push(new Option('Photo · '+p.label,key));
   for(const [key,p] of Object.entries(def.fields)) options.push(new Option(p.tag.toUpperCase()+' · '+p.value.slice(0,90),key));
   $('field').replaceChildren(...options); $('field').disabled=false; $('edit-form').hidden=false;
-  $('public-page').href=path; displayField();
+  $('public-page').href=new URL(path,'https://harkynb-production.justsamuelpaul.workers.dev').href; displayField();
 }
 function run(fn){return (...args)=>Promise.resolve().then(()=>fn(...args)).catch(e=>say(e.message));}
 async function preparePhoto() {
