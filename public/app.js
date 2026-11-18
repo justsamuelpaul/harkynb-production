@@ -17,7 +17,7 @@
   const dialog=document.querySelector('#lightbox');
   document.querySelectorAll('[data-photo]').forEach(button=>button.addEventListener('click',()=>{
     if(!button.dataset.photo)return;
-    const img=document.querySelector('#lightbox-img');img.src=button.dataset.photo;img.alt=button.dataset.caption||'';
+    const img=document.querySelector('#lightbox-img');const source=button.querySelector('img');img.src=source?.currentSrc||button.dataset.photo;img.alt=source?.alt||button.dataset.caption||'';
     document.querySelector('#lightbox-caption').textContent=button.dataset.caption||'';dialog.showModal();
   }));
   dialog?.querySelector('.close-dialog')?.addEventListener('click',()=>dialog.close());
@@ -32,23 +32,30 @@
   const highlight=()=>document.querySelectorAll('[data-team-link]').forEach(a=>a.classList.toggle('selected',a.dataset.teamLink===team.value));highlight();
   document.querySelectorAll('[data-team-link]').forEach(a=>a.addEventListener('click',ev=>{ev.preventDefault();team.value=a.dataset.teamLink;highlight();result.hidden=true;form.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});}));
   form.addEventListener('input',()=>{result.hidden=true;});team.addEventListener('change',()=>{highlight();result.hidden=true;});
-  const settings=fetch('/settings.json').then(r=>{if(!r.ok)throw Error();return r.json();}).catch(()=>({contacts:{}}));
-  let downloadUrl='';
-  form.addEventListener('submit',async ev=>{
-    ev.preventDefault();if(!form.reportValidity())return;
-    if(!form.elements.name.value.trim()||form.elements.message.value.trim().length<10){form.elements.message.setCustomValidity('Please enter a message of at least 10 non-space characters.');form.elements.message.reportValidity();return;}
-    form.elements.message.setCustomValidity('');
-    const data=Object.fromEntries(new FormData(form));const teamLabel=team.selectedOptions[0].textContent;
-    const text=`HarkynB enquiry\nTeam: ${teamLabel}\nName: ${data.name}\nOrganisation: ${data.organisation||'Not provided'}\nEmail: ${data.email}\nPhone: ${data.phone||'Not provided'}\nService: ${data.service||'General enquiry'}\nProject date: ${data.date||'To discuss'}\nLocation: ${data.location||'To discuss'}\nEstimated budget: ${data.budget||'To discuss'}\nPreferred contact: ${data.method}\n\n${data.message}`;
-    const config=await settings;const target=config.contacts?.[data.team]||{};
-    result.replaceChildren();const p=document.createElement('p');p.textContent='Your enquiry draft is ready. It has not been sent. Download it or open an available contact app to review and send.';result.append(p);
-    const preview=document.createElement('pre');preview.textContent=text;result.append(preview);
-    if(downloadUrl)URL.revokeObjectURL(downloadUrl);downloadUrl=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));
-    const download=document.createElement('a');download.href=downloadUrl;download.download='harkynb-enquiry.txt';download.className='button';download.textContent='Download enquiry';result.append(download);
-    if(target.email&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target.email)){const email=document.createElement('a');email.className='text-link';email.href=`mailto:${target.email}?subject=${encodeURIComponent(`${data.service||'Project'} enquiry`)}&body=${encodeURIComponent(text)}`;email.textContent='Open email draft';result.append(email);}
-    if(target.whatsapp&&/^\d{8,15}$/.test(target.whatsapp)){const wa=document.createElement('a');wa.className='text-link';wa.href=`https://wa.me/${target.whatsapp}?text=${encodeURIComponent(text)}`;wa.textContent='Open WhatsApp draft';wa.target='_blank';wa.rel='noopener noreferrer';result.append(wa);}
-    if(!target.email&&!target.whatsapp){const pending=document.createElement('p');pending.className='small';pending.textContent='Delivery is not configured for this team yet. Keep your downloaded draft until contact details are confirmed.';result.append(pending);}
-    result.hidden=false;result.focus();
+  let requestId = crypto.randomUUID();
+  form.addEventListener('input', () => { requestId = crypto.randomUUID(); });
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = form.querySelector('[type=submit]');
+    if (button.disabled || !form.reportValidity()) return;
+    button.disabled = true;
+    try {
+      const response = await fetch('/api/enquiries', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({...Object.fromEntries(new FormData(form)), requestId})
+      });
+      const reply = await response.json();
+      if (!response.ok || !reply.saved) throw Error(reply.error || 'Please try again.');
+      form.reset();
+      highlight();
+      requestId = crypto.randomUUID();
+      result.textContent = 'Your enquiry has been sent to HarkynB. Thank you.';
+    } catch (error) {
+      result.textContent = 'Delivery could not be confirmed. Your entries are still here. ' + (error.message || 'Please try again.');
+    } finally {
+      button.disabled = false;
+      result.hidden = false;
+      result.focus();
+    }
   });
-  form.elements.message.addEventListener('input',()=>form.elements.message.setCustomValidity(''));
 })();

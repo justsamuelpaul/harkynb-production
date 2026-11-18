@@ -3,6 +3,28 @@
   "compatibility_date": "2026-11-17",
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "404-page"
+    "not_found_handling": "404-page",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "main": "worker.mjs",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "STUDIO",
+        "class_name": "Studio"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "studio-v1",
+      "new_sqlite_classes": [
+        "Studio"
+      ]
+    }
+  ],
+  "build": {
+    "command": "node scripts/build.mjs"
   }
 }
