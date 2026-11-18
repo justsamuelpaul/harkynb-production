@@ -31,7 +31,45 @@ async function loadPage() {
   for(const [key,p] of Object.entries(def.photos)) options.push(new Option('Photo · '+p.label,key));
   for(const [key,p] of Object.entries(def.fields)) options.push(new Option(p.tag.toUpperCase()+' · '+p.value.slice(0,90),key));
   $('field').replaceChildren(...options); $('field').disabled=false; $('edit-form').hidden=false;
-  $('public-page').href=new URL(path,'https://harkynb-production.justsamuelpaul.workers.dev').href; displayField();
+  $('public-page').href=new URL(path,'https://harkynb-production.justsamuelpaul.workers.dev').href; displayField(); renderOrphans();
+}
+const el=(tag,props={},...kids)=>{const e=Object.assign(document.createElement(tag),props);e.append(...kids);return e;};
+// Field keys are derived from a page's built-in wording. When that wording changes in code,
+// published edits lose their field. List them so staff can reconnect or discard instead of losing them silently.
+async function loadAttention() {
+  const counts=await api('/admin/attention'), list=Object.entries(counts).filter(([p])=>pages[p]);
+  $('attention').hidden=!list.length;
+  $('attention').replaceChildren(...(list.length?[
+    el('p',{textContent:'Some published edits are no longer connected to their page because its built-in wording changed. Open each page to reconnect or discard them.'}),
+    el('ul',{},...list.map(([p,n])=>el('li',{},el('button',{type:'button',textContent:pages[p].title+' · '+p+' · '+n+(n===1?' edit':' edits'),onclick:run(async()=>{$('page').value=p;await loadPage();})}))))
+  ]:[]));
+}
+function renderOrphans() {
+  const def=pages[$('page').value], c=current.current;
+  const items=[...Object.keys(c.text).filter(k=>!Object.hasOwn(def.fields,k)).map(k=>({k,kind:'text'})),
+    ...Object.keys(c.images).filter(k=>!Object.hasOwn(def.photos,k)).map(k=>({k,kind:'images'}))];
+  $('orphans').hidden=!items.length;
+  $('orphans').replaceChildren(...(items.length?[el('h3',{textContent:'Edits to reconnect on this page'})]:[]),...items.map(({k,kind})=>{
+    const targets=kind==='text'
+      ? Object.entries(def.fields).map(([key,f])=>new Option(f.tag.toUpperCase()+' · '+f.value.slice(0,90),key))
+      : Object.entries(def.photos).map(([key,p])=>new Option('Photo · '+p.label,key));
+    const pick=el('select',{},new Option('Choose where this belongs…',''),...targets);
+    const buttons=[];
+    const send=async to=>{
+      if (to===null && !confirm('Discard this published edit? The page will show its built-in content instead.')) return;
+      buttons.forEach(b=>b.disabled=true);
+      try {current=await api(pageUrl(),{revision:current.revision,relink:{from:k,to}});}
+      finally {buttons.forEach(b=>b.disabled=false);}
+      displayField(); renderOrphans(); say(to===null?'Edit discarded.':'Edit reconnected and published.');
+      await loadAttention();
+    };
+    const shown=kind==='text'
+      ? [el('p',{},el('strong',{textContent:'Published text: '}),c.text[k]),...(c.was[k]?[el('p',{},el('strong',{textContent:'It replaced: '}),c.was[k])]:[])]
+      : [el('img',{src:'/media/'+c.images[k].id,alt:c.images[k].alt,className:'orphan-photo'})];
+    buttons.push(el('button',{type:'button',textContent:'Reconnect',onclick:run(()=>{if(!pick.value)throw Error('Choose where this edit belongs.');return send(pick.value);})}),
+      el('button',{type:'button',textContent:'Discard',onclick:run(()=>send(null))}));
+    return el('div',{className:'orphan'},...shown,el('label',{},'Reconnect to ',pick),...buttons);
+  }));
 }
 function run(fn){return (...args)=>Promise.resolve().then(()=>fn(...args)).catch(e=>say(e.message));}
 async function preparePhoto() {
@@ -67,7 +105,7 @@ if ($('editor')) {
   $('page').onchange=run(loadPage);$('field').onchange=displayField;$('photo').onchange=run(preparePhoto);
   $('edit-form').onsubmit=e=>{e.preventDefault();run(save)();};$('restore').onclick=run(()=>save(true));
   $('edit-form').hidden=true;
-  run(async()=>{pages=await api('/editor-pages.json');for(const [path,def] of Object.entries(pages)) $('page').add(new Option(def.title+' · '+path,path));await loadPage();})();
+  run(async()=>{pages=await api('/editor-pages.json');for(const [path,def] of Object.entries(pages)) $('page').add(new Option(def.title+' · '+path,path));await loadPage();await loadAttention();})();
 }
 function addEntry(row) {
   const details=document.createElement('details'), summary=document.createElement('summary'), dl=document.createElement('dl'), button=document.createElement('button');

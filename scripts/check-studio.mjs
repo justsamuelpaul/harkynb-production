@@ -55,6 +55,30 @@ const img=await (await publish({key:'feature',alt:'Test photograph',image:'/9j/2
 assert.equal(img.current.text[key],'Updated work');
 assert.equal((await call('/media/'+img.current.images.feature.id)).headers.get('content-type'),'image/jpeg');
 assert.equal((await (await publish({revision:2,restore:true})).json()).current.images.feature,undefined);
+
+// Changing built-in wording in code disconnects a published edit. Staff must see it and can reconnect or discard it.
+const attention=async()=>(await adminJson('/admin/attention',member)).json();
+const other=Object.keys(pages[route].fields)[1], saved=pages[route].fields[key];
+assert.deepEqual(await attention(),{});
+delete pages[route].fields[key];
+assert.deepEqual(await attention(),{[route]:1});
+let state=await (await adminJson(path,member)).json();
+assert.equal(state.current.was[key],saved.value);
+assert.equal((await publish({revision:state.revision,relink:{from:key,to:'not-a-field'}})).status,400);
+assert.equal((await publish({revision:state.revision,relink:{from:other,to:null}})).status,400);
+state=await (await publish({revision:state.revision,relink:{from:key,to:other}})).json();
+assert.equal(state.current.text[other],'Updated work');
+assert.equal(state.current.text[key],undefined);
+assert.equal(state.current.was[other],pages[route].fields[other].value);
+assert.deepEqual(await attention(),{});
+pages[route].fields[key]=saved;
+const otherField=pages[route].fields[other]; delete pages[route].fields[other];
+assert.deepEqual(await attention(),{[route]:1});
+state=await (await publish({revision:state.revision,relink:{from:other,to:null}})).json();
+assert.equal(state.current.text[other],undefined);
+assert.deepEqual(await attention(),{});
+pages[route].fields[other]=otherField;
+
 const inbox=await (await adminJson('/admin/enquiries',owner)).json();
 assert.equal(inbox.length,1);assert.equal(inbox[0].entry.message,data.message);
 await adminJson('/admin/enquiries',owner,{id:data.requestId,status:'Resolved'});
@@ -63,6 +87,7 @@ assert.equal(studio.inbox(0)[0].status,'Resolved');
 assert.equal((await adminCall('/team',owner,{id:memberId,role:'inbox'})).status,303);
 assert.equal((await (await adminCall('/admin/enquiries',member)).json())[0].id,data.requestId);
 assert.equal((await adminCall('/admin/page?path=/',member)).status,403);
+assert.equal((await adminCall('/admin/attention',member)).status,403);
 assert.equal((await adminCall('/logout',member,{})).status,303);
 assert.equal((await adminCall('/admin/enquiries',member)).status,401);
 assert.equal((await adminCall('/login','',{name:'member',password:'my testing password'})).status,303);

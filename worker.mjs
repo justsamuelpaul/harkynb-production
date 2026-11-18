@@ -95,7 +95,21 @@ export class Studio extends DurableObject {
   releaseAuth(bucket){this.sql.exec('UPDATE limits SET n=MAX(0,n-1) WHERE bucket=?',bucket);}
   page(path) {
     const row = this.sql.exec('SELECT * FROM pages WHERE path=?',path).toArray()[0];
-    return row ? {revision:row.revision,current:JSON.parse(row.current),canRestore:!!row.previous} : {revision:0,current:{text:{},images:{}},canRestore:false};
+    const current = row ? JSON.parse(row.current) : {text:{},images:{}};
+    current.was ||= {};
+    return {revision:row?.revision || 0,current,canRestore:!!row?.previous};
+  }
+  // Saved edits whose field no longer exists on the built page, counted per page.
+  // Field keys come from the page's built-in wording, so a code change to that wording disconnects staff edits.
+  orphans(manifest) {
+    const out = {};
+    for (const row of this.sql.exec('SELECT path,current FROM pages').toArray()) {
+      const def = manifest[row.path]; if (!def) continue;
+      const c = JSON.parse(row.current);
+      const n = Object.keys(c.text).filter(k=>!Object.hasOwn(def.fields,k)).length + Object.keys(c.images).filter(k=>!Object.hasOwn(def.photos,k)).length;
+      if (n) out[row.path] = n;
+    }
+    return out;
   }
   publish(path,schema,d) {
     const state = this.page(path);
@@ -105,9 +119,23 @@ export class Studio extends DurableObject {
     if (d.restore) {
       const row=this.sql.exec('SELECT previous FROM pages WHERE path=?',path).toArray()[0];
       if (!row?.previous) return {status:400,error:'No previous version.'};
-      Object.assign(next,JSON.parse(row.previous));
+      const prior=JSON.parse(row.previous);
+      next.text=prior.text; next.images=prior.images; next.was=prior.was || {};
+    } else if (d.relink && typeof d.relink.from==='string') {
+      const {from,to}=d.relink;
+      const kind=Object.hasOwn(next.text,from) && !Object.hasOwn(schema.fields,from) ? 'text'
+        : Object.hasOwn(next.images,from) && !Object.hasOwn(schema.photos,from) ? 'images' : null;
+      if (!kind) return {status:400,error:'That edit is already connected to the page.'};
+      if (to!==null) {
+        const targets=kind==='text' ? schema.fields : schema.photos;
+        if (typeof to!=='string' || !Object.hasOwn(targets,to)) return {status:400,error:'Choose where this edit belongs.'};
+        next[kind][to]=next[kind][from];
+        if (kind==='text') next.was[to]=targets[to].value;
+      }
+      delete next[kind][from]; delete next.was[from];
     } else if (Object.hasOwn(schema.fields,d.key) && typeof d.value==='string' && d.value.trim() && d.value.length<=5000) {
-      if (d.value===schema.fields[d.key].value) delete next.text[d.key]; else next.text[d.key]=d.value.trim();
+      if (d.value===schema.fields[d.key].value) {delete next.text[d.key]; delete next.was[d.key];}
+      else {next.text[d.key]=d.value.trim(); next.was[d.key]=schema.fields[d.key].value;}
     } else if (Object.hasOwn(schema.photos,d.key) && typeof d.image==='string' && typeof d.alt==='string' && d.alt.trim() && d.alt.length<=300) {
       let bytes;
       try {bytes=Uint8Array.from(atob(d.image),c=>c.charCodeAt(0));} catch {return {status:400,error:'Invalid image.'};}

@@ -77,9 +77,11 @@ export default {async fetch(request,env){
         return json(await store.setStatus(d.id,d.status));
       }
     }
+    const loadManifest = async () => (await env.SITE.fetch(new URL("/editor-pages.json",site))).json();
+    if (path==='/admin/attention' && role!=='inbox' && method==='GET') return json(await store.orphans(await loadManifest()));
     if (path==='/admin/page' && role!=='inbox') {
       const page = url.searchParams.get('path');
-      const manifest = await (await env.SITE.fetch(new URL('/editor-pages.json',site))).json();
+      const manifest = await loadManifest();
       if (!Object.hasOwn(manifest,page)) return fail('Unknown page.',404);
       if (request.method==='GET') return json(await store.page(page));
       if (request.method==='POST') {
