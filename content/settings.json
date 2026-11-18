@@ -5,19 +5,332 @@
   "logoOnDark": "/brand/harkynb-production-light.png",
   "heroVideo": "",
   "contacts": {
-    "production": { "email": "", "whatsapp": "" },
-    "onevoicefm": { "email": "", "whatsapp": "" },
-    "shotit": { "email": "", "whatsapp": "" },
-    "academy": { "email": "", "whatsapp": "" },
-    "summit": { "email": "", "whatsapp": "" }
+    "production": {
+      "email": "",
+      "whatsapp": ""
+    },
+    "onevoicefm": {
+      "email": "",
+      "whatsapp": ""
+    },
+    "shotit": {
+      "email": "",
+      "whatsapp": ""
+    },
+    "academy": {
+      "email": "",
+      "whatsapp": ""
+    },
+    "summit": {
+      "email": "",
+      "whatsapp": ""
+    }
   },
   "socials": [],
-  "radio": { "streamUrl": "", "nowPlaying": "", "programmes": [], "episodes": [] },
-  "projects": [],
+  "radio": {
+    "streamUrl": "",
+    "nowPlaying": "",
+    "programmes": [],
+    "episodes": []
+  },
+  "projects": [
+    {
+      "slug": "netflix-lights-camera-naija-red-carpet",
+      "team": "shotit",
+      "title": "Netflix Lights, Camera… Naija! Red Carpet",
+      "category": "Brands",
+      "description": "Red carpet and guest photography at the Netflix Lights, Camera… Naija! celebration.",
+      "location": "",
+      "services": "Event and red carpet photography",
+      "image": "/media/shotit-red-carpet-01.jpg",
+      "alt": "Three guests in formal and traditional outfits pose together in front of the event backdrop.",
+      "credit": "HarkynBShotIt",
+      "gallery": [
+        {
+          "title": "Red carpet interview",
+          "category": "Brands",
+          "image": "/media/shotit-red-carpet-02.jpg",
+          "alt": "A guest in a cream suit and sunglasses smiles while speaking into a microphone on the red carpet.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "Arrival on the podium",
+          "category": "Brands",
+          "image": "/media/shotit-red-carpet-03.jpg",
+          "alt": "A guest in an all-white outfit poses on a raised red podium against the event backdrop.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "Northern elegance",
+          "category": "Brands",
+          "image": "/media/shotit-red-carpet-04.jpg",
+          "alt": "Five guests in flowing traditional attire and headwear stand together for a group portrait.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "Statement style",
+          "category": "Brands",
+          "image": "/media/shotit-red-carpet-05.jpg",
+          "alt": "A guest in a wide-brimmed red hat and illustrated top poses with hands clasped.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "Friends on the carpet",
+          "category": "Brands",
+          "image": "/media/shotit-red-carpet-06.jpg",
+          "alt": "Four guests in bright evening outfits pose arm in arm on the red carpet.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "A warm welcome",
+          "category": "Brands",
+          "image": "/media/shotit-red-carpet-07.jpg",
+          "alt": "Two guests greet each other with a respectful embrace outside the venue.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "Floral couture",
+          "category": "Brands",
+          "image": "/media/shotit-red-carpet-08.jpg",
+          "alt": "A guest in a sculpted white floral gown and red head wrap speaks into a microphone.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "The full line-up",
+          "category": "Brands",
+          "image": "/media/shotit-red-carpet-09.jpg",
+          "alt": "A large group of guests in colourful outfits poses together across the red carpet.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "Lounge portraits",
+          "category": "Brands",
+          "image": "/media/shotit-red-carpet-10.jpg",
+          "alt": "Four guests share a relaxed moment seated together in an elegant white set.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "Gentlemen of the evening",
+          "category": "Brands",
+          "image": "/media/shotit-red-carpet-11.jpg",
+          "alt": "Six men in tailored suits and traditional outfits pose in front of white columns and chandeliers.",
+          "credit": "HarkynBShotIt"
+        }
+      ]
+    },
+    {
+      "slug": "traditional-wedding",
+      "team": "shotit",
+      "title": "Traditional Wedding",
+      "category": "Weddings",
+      "description": "A traditional wedding told from the first details to the last dance.",
+      "location": "",
+      "services": "Wedding photography",
+      "image": "/media/shotit-traditional-wedding-01.jpg",
+      "alt": "The couple sits at the centre of a smiling bridal party dressed in matching pink.",
+      "credit": "HarkynBShotIt",
+      "gallery": [
+        {
+          "title": "Bridal details",
+          "category": "Weddings",
+          "image": "/media/shotit-traditional-wedding-02.jpg",
+          "alt": "Jewelled shoes, coral beads and gold jewellery arranged on white linen.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "The groom's details",
+          "category": "Weddings",
+          "image": "/media/shotit-traditional-wedding-03.jpg",
+          "alt": "Studded black loafers beside a gold wristwatch.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "Getting ready",
+          "category": "Weddings",
+          "image": "/media/shotit-traditional-wedding-04.jpg",
+          "alt": "A makeup artist adjusts the bride's white gele before the ceremony.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "Silhouette",
+          "category": "Weddings",
+          "image": "/media/shotit-traditional-wedding-05.jpg",
+          "alt": "The couple, in traditional headwear, share a kiss in silhouette against a bright window.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "The bride's party",
+          "category": "Weddings",
+          "image": "/media/shotit-traditional-wedding-06.jpg",
+          "alt": "The bride in white stands with her party in pink outfits and gele in a hallway.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "The groom's entrance",
+          "category": "Weddings",
+          "image": "/media/shotit-traditional-wedding-07.jpg",
+          "alt": "The groom in white arrives through a floral archway with family dressed in blue.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "Paying respects",
+          "category": "Weddings",
+          "image": "/media/shotit-traditional-wedding-08.jpg",
+          "alt": "The groom and his friends lie prostrate in a traditional greeting to the bride's family.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "The groom and his men",
+          "category": "Weddings",
+          "image": "/media/shotit-traditional-wedding-09.jpg",
+          "alt": "The groom in white sits with his groomsmen in matching blue agbada.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "First dance",
+          "category": "Weddings",
+          "image": "/media/shotit-traditional-wedding-10.jpg",
+          "alt": "The couple dance closely as low fog fills the floor around them.",
+          "credit": "HarkynBShotIt"
+        },
+        {
+          "title": "Celebration",
+          "category": "Weddings",
+          "image": "/media/shotit-traditional-wedding-11.jpg",
+          "alt": "Guests in blue and pink dance together around the newlyweds.",
+          "credit": "HarkynBShotIt"
+        }
+      ]
+    }
+  ],
   "students": [],
   "speakers": [],
-  "summitPhotos": [],
+  "summitPhotos": [
+    {
+      "title": "Opening address",
+      "category": "The Gathering",
+      "image": "/media/summit-1-01.jpg",
+      "alt": "A speaker addresses the audience from a clear podium, with the speaker line-up on screen behind him.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "From the lectern",
+      "category": "The Gathering",
+      "image": "/media/summit-1-02.jpg",
+      "alt": "A speaker in white gestures to the audience while presenting from the lectern.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "In the audience",
+      "category": "The Gathering",
+      "image": "/media/summit-1-03.jpg",
+      "alt": "Guests in the front row listen closely to a session.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "Applause",
+      "category": "The Gathering",
+      "image": "/media/summit-1-04.jpg",
+      "alt": "Members of the audience applaud a session.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "Panel conversation",
+      "category": "The Gathering",
+      "image": "/media/summit-1-05.jpg",
+      "alt": "Three panellists share their experiences on stage in front of a blue and red screen.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "Sharing the stage",
+      "category": "The Gathering",
+      "image": "/media/summit-1-06.jpg",
+      "alt": "A panellist speaks into a microphone as two fellow panellists listen.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "Moderated panel",
+      "category": "The Gathering",
+      "image": "/media/summit-1-07.jpg",
+      "alt": "A moderator stands to introduce five seated panellists.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "Up close with the panel",
+      "category": "The Gathering",
+      "image": "/media/summit-1-08.jpg",
+      "alt": "Three panellists seated on stage, one speaking into a microphone.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "Panel in session",
+      "category": "The Gathering",
+      "image": "/media/summit-1-09.jpg",
+      "alt": "Six panellists seated in a row on stage during a discussion.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "Recognising contributors",
+      "category": "Group Photographs",
+      "image": "/media/summit-1-10.jpg",
+      "alt": "Five people stand on stage, two holding framed certificates.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "Certificates on stage",
+      "category": "Group Photographs",
+      "image": "/media/summit-1-11.jpg",
+      "alt": "A group stands on stage as two participants hold their certificates.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "Celebrating participants",
+      "category": "Group Photographs",
+      "image": "/media/summit-1-12.jpg",
+      "alt": "Five people pose on stage, two holding certificates.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "The panel together",
+      "category": "Group Photographs",
+      "image": "/media/summit-1-13.jpg",
+      "alt": "Panellists and moderators pose together on stage after their session.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "Future is created",
+      "category": "Group Photographs",
+      "image": "/media/summit-1-14.jpg",
+      "alt": "A cheerful group points upward together on stage at the close of the Summit.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "Before the sessions",
+      "category": "Networking",
+      "image": "/media/summit-1-15.jpg",
+      "alt": "Four participants stand together in the lounge.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "In the green room",
+      "category": "Behind the Scenes",
+      "image": "/media/summit-1-16.jpg",
+      "alt": "Speakers and organisers gather for a photograph backstage.",
+      "credit": "Future Creators Summit"
+    },
+    {
+      "title": "Appreciation award",
+      "category": "Behind the Scenes",
+      "image": "/media/summit-1-17.jpg",
+      "alt": "A participant receives an appreciation certificate and gift backstage.",
+      "credit": "Future Creators Summit"
+    }
+  ],
   "summitVideos": [],
   "news": [],
-  "nextSummit": { "registrationUrl": "", "date": "", "venue": "" }
+  "nextSummit": {
+    "registrationUrl": "",
+    "date": "",
+    "venue": ""
+  }
 }

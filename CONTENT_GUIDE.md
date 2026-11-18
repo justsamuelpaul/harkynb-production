@@ -30,6 +30,7 @@ The five team keys are `production`, `onevoicefm`, `shotit`, `academy`, and `sum
   "description": "Approved project summary",
   "location": "Approved location",
   "services": "Services actually delivered",
+  "team": "shotit",
   "image": "/media/project-cover.webp",
   "alt": "A useful description of the photograph",
   "credit": "Authorised photographer credit",
@@ -38,6 +39,8 @@ The five team keys are `production`, `onevoicefm`, `shotit`, `academy`, and `sum
   ]
 }
 ```
+
+Optional `team` (`production`, `onevoicefm`, `shotit`, `academy`, `summit`) sets which team receives "Plan a similar project" enquiries; it defaults to `production`. Set `credit` to the brand that produced the work, such as `HarkynBShotIt`.
 
 Add these to `projects`. Allowed categories: Weddings, Corporate, Conferences, Portraits, Brands, Music Videos, Film, Livestreaming, Behind the Scenes, Training. Slugs must be unique lowercase letters, digits, and single hyphens. Gallery entries should not contain a slug unless they refer to an actual configured project. All images must exist in `public/` or use approved HTTPS URLs.
 

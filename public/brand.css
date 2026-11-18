@@ -123,9 +123,9 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--hb-blue);outline
 .violet-section{background:#FFF4DC;--text:#1E2126;--muted:#4A4F57;--accent:#7A4800;--line:#EDD39A;color:var(--text)}
 .radio-panel .eyebrow{color:#7A4800}
 .theme-sand{--accent:var(--hb-blue-ink)}
-.theme-sand .page-hero{border-top:4px solid var(--hb-charcoal)}
+.theme-sand .page-hero{background:radial-gradient(ellipse at 92% 8%,#E6EAEF,transparent 62%);border-top:4px solid var(--hb-charcoal)}
 .theme-yellow{--accent:var(--hb-blue-ink)}
-.theme-yellow .page-hero{border-top:4px solid var(--hb-blue)}
+.theme-yellow .page-hero{background:radial-gradient(ellipse at 92% 8%,#E3F0FC,transparent 62%);border-top:4px solid var(--hb-blue)}
 .yellow-section{background:var(--hb-blue-soft);color:var(--text);--text:#1E2126;--muted:#45505C;--line:#BCD5EE;--accent:var(--hb-blue-ink)}
 .yellow-section .course-card:hover{background:#D3E7FA}
 /* Future Creators Summit: logo is white, so its hero and feature bands are dark */
@@ -157,3 +157,4 @@ footer{background:var(--hb-night)}
 .footer-grid>div>a:hover{color:#6FB6F5}
 .footer-bottom{color:#9AA4AF}
 footer .logo{height:56px}
+.photo-credit{display:block;margin:6px 0 14px;color:#6B7280;font-size:.72rem;letter-spacing:.02em}
