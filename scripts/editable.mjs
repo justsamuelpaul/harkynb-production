@@ -17,6 +17,7 @@ export function markEditable(body) {
     return '<' + tag + attrs + ' data-copy="' + id + '">' + inner + '</' + tag + '>';
   });
   html = html.replace(/<img\b[^>]*>/g, image => {
+    if (/data-static/.test(image)) return image;
     const source = image.match(/\bsrc="([^"]+)"/)?.[1];
     if (!source) return image;
     const id = unique(photos,key(source));

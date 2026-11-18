@@ -1,0 +1,159 @@
+/* HarkynB brand layer: light site built on the HarkynB Production logo colours.
+   Loaded after styles.css and design.css, so it overrides their earlier dark direction.
+
+   Brand palette (sampled from supplied logos)
+   HarkynB Production   blue #0878D8, charcoal #282828
+   Onevoicefm           orange #F8A808, cyan #28D8E8
+   Future Creators Summit  orange #F89808, green #48A858, white on dark
+   HarkynBShotIt, Creators Academy  HarkynB blue family until their logos arrive
+
+   Legacy class names are kept as hooks and mapped to brands:
+   violet = Onevoicefm, sand = HarkynBShotIt, yellow = Creators Academy, blue = Future Creators Summit */
+
+:root{
+  --hb-blue:#0878D8;--hb-blue-ink:#0A64B4;--hb-blue-soft:#E3F0FC;--hb-charcoal:#282828;--hb-night:#16191D;
+  --ovfm-orange:#F8A808;--ovfm-orange-ink:#9A5B00;--ovfm-cyan:#28D8E8;
+  --fcs-orange:#F89808;--fcs-green:#48A858;
+  --bg:#FFFFFF;--panel:#F3F6FA;--text:#1E2126;--muted:#545A63;--line:#DCE2EA;--accent:var(--hb-blue-ink);--ink:#1E2126;--paper:#F3F6FA
+}
+body{background:var(--bg);color:var(--text)}
+::selection{background:var(--hb-blue);color:#fff}
+.skip{background:var(--hb-blue);color:#fff}
+
+/* Header */
+.site-header{background:#FFFFFFF2;border-bottom:1px solid var(--line);backdrop-filter:saturate(1.4) blur(8px)}
+.logo{max-height:60px;max-width:none;height:60px;width:auto;display:block}
+.wordmark{color:var(--hb-charcoal)}
+nav>a{color:#3A3F46}
+nav>a:hover,nav a[aria-current]{color:var(--hb-blue-ink)}
+.nav-cta{background:var(--hb-blue);color:#fff}
+.nav-cta:hover{background:var(--hb-charcoal);color:#fff}
+.menu-toggle{color:var(--hb-charcoal)}
+@media(max-width:900px){nav{background:#fff;border-bottom:1px solid var(--line)}}
+.review-bar{background:#FFF6E0;color:#5C4A12;border-bottom:1px solid #F1E2B5}
+.review-dot{background:var(--ovfm-orange)}
+.review-detail{color:#7A6A3A}
+.brand-bar{color:var(--muted)}
+
+/* Buttons and links */
+.button{background:var(--hb-blue);color:#fff;border-color:var(--hb-blue)}
+.button:hover{background:var(--hb-charcoal);border-color:var(--hb-charcoal);color:#fff}
+.button.ghost{background:transparent;color:var(--text);border-color:#B9C2CE}
+.button.ghost:hover{border-color:var(--text);background:transparent;color:var(--text)}
+.button:disabled{background:#E4E8EE;color:#6B7280;border-color:#CBD2DB}
+a:hover{color:var(--hb-blue-ink)}
+
+/* Heroes */
+.home-hero,.studio-hero{background:radial-gradient(ellipse at 85% 25%,#DCEBFB,transparent 60%)}
+.studio-kicker,.hero-strip,.scroll-cue{color:#5F6672}
+.studio-title>p{color:var(--muted)}
+.page-hero{background:radial-gradient(ellipse at 95% 10%,#E3F0FC,transparent 65%);border-bottom:1px solid var(--line)}
+.hero-mark{margin-bottom:28px}
+.hero-mark .brand-logo{height:96px;width:auto;display:block}
+.hero-mark .brand-wordmark{font-size:2rem}
+
+/* Hero artwork card stays dark, recoloured to HarkynB blue */
+.lens-composition{background:var(--hb-night)}
+.lens-meta,.lens-caption{color:#C3D3E4}
+.composition-note{background:#fff;color:var(--hb-charcoal)}
+.composition-note p{color:#3A3F46}
+.hero-art{background:radial-gradient(ellipse at 28% 25%,#2A86E0,#0A3F73 28%,#14181D 68%)}
+.art-type{color:#D6E6F7}.art-type em{color:#5AAEF5}.art-foot{color:#B9CCE0}.frame-mark{border-color:#7FB5EA}
+
+/* Section surfaces */
+.light{--text:#1E2126;--muted:#545A63;--accent:var(--hb-blue-ink);--line:#D3DBE5;background:var(--paper);color:var(--text)}
+.light .button{background:var(--hb-charcoal);color:#fff;border-color:var(--hb-charcoal)}
+.light .button:hover{background:var(--hb-blue);border-color:var(--hb-blue)}
+.light .index{color:var(--hb-blue-ink)}
+.light .empty{background:#E7EDF4}
+.intent-card{color:var(--text)}
+.intent-top{color:#6B7280}.intent-top>span:last-child{color:var(--hb-charcoal)}
+.intent-card p{color:var(--muted)}
+.intent-card:hover{color:var(--hb-blue-ink)}
+.home-statement{background:var(--hb-charcoal);--text:#F4F6F8;--muted:#C9CFD6;color:#F4F6F8}
+.home-statement:after{color:#FFFFFF0D}
+.about-statement h2 span{color:#9AA4AF}
+.about-statement h2 em,.about-statement .eyebrow{color:#6FB6F5}
+.about-statement-bottom p{color:#C9CFD6}
+.about-statement-bottom a{color:#fff}
+.cta-section{background:var(--hb-blue-soft);--text:#1E2126;--muted:#45505C;--accent:var(--hb-blue-ink);--line:#BCD5EE;color:var(--text)}
+.cta-section .eyebrow{color:var(--hb-blue-ink)}
+.cta .button{background:var(--hb-charcoal);color:#fff;border-color:var(--hb-charcoal)}
+.cta .button:hover{background:var(--hb-blue);border-color:var(--hb-blue)}
+body.theme-yellow .cta-section,body.theme-blue .cta-section,body.theme-violet .cta-section,body.theme-sand .cta-section{--accent:var(--hb-blue-ink)}
+.empty{background:var(--panel)}
+.course-card:hover{background:var(--panel)}
+.course-info{background:var(--panel)}
+.filter.active{background:var(--hb-blue);border-color:var(--hb-blue);color:#fff}
+.filter:hover{border-color:var(--hb-blue)}
+
+/* Forms */
+input,textarea,select{background:#fff;color:var(--text);border-color:#C5CED9}
+input::placeholder,textarea::placeholder{color:#7A828D}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--hb-blue);outline-offset:1px}
+.form-result pre{background:var(--panel);color:var(--text)}
+
+/* Brand cards: logo or wordmark replaces the old glyph */
+.brand-card .brand-glyph{transform:none;opacity:1;font-size:inherit;display:flex;align-items:center;justify-content:center}
+.brand-card:hover .brand-glyph{transform:scale(1.04)}
+.brand-card .brand-logo{width:100%;height:auto;max-height:140px;object-fit:contain}
+.brand-wordmark{display:inline-flex;flex-direction:column;font:800 1.5rem/1 Manrope,Arial,sans-serif;letter-spacing:-.03em;text-align:left}
+.brand-wordmark>span{font:600 .62rem/1.2 'DM Sans',Arial,sans-serif;letter-spacing:.24em;text-transform:uppercase;margin-bottom:6px;opacity:.75}
+.brand-wordmark>strong{font-weight:800}
+.brand-card .brand-wordmark{font-size:1.35rem}
+.brand-card.violet{background:#fff;color:var(--hb-charcoal);border:1px solid var(--line);border-top:4px solid var(--ovfm-orange)}
+.brand-card.violet p{color:#3A3F46}
+.brand-card.sand{background:var(--hb-charcoal);color:#fff}
+.brand-card.sand p{color:#D5DAE0}
+.brand-card.sand .text-link{color:#fff;border-color:#FFFFFF44}
+.brand-card.sand:hover{color:#fff}
+.brand-card.sand .brand-wordmark strong{color:#5AAEF5}
+.brand-card.yellow{background:var(--hb-blue-soft);color:var(--hb-charcoal)}
+.brand-card.yellow p{color:#3A3F46}
+.brand-card.yellow .brand-wordmark strong{color:var(--hb-blue-ink)}
+.brand-card.blue{background:var(--hb-night);color:#fff}
+.brand-card.blue p{color:#D5DAE0}
+.brand-card.blue .text-link{color:#fff;border-color:#FFFFFF44}
+.brand-card.blue:after{border-color:#F8980833}
+.brand-card:after{border-color:#2828281A}
+
+/* Brand page themes */
+.theme-violet{--accent:var(--ovfm-orange-ink)}
+.theme-violet .page-hero{background:radial-gradient(ellipse at 90% 10%,#FFF1D1,transparent 60%),radial-gradient(ellipse at 10% 100%,#DDF8FB,transparent 55%);border-top:4px solid var(--ovfm-orange)}
+.violet-section{background:#FFF4DC;--text:#1E2126;--muted:#4A4F57;--accent:#7A4800;--line:#EDD39A;color:var(--text)}
+.radio-panel .eyebrow{color:#7A4800}
+.theme-sand{--accent:var(--hb-blue-ink)}
+.theme-sand .page-hero{border-top:4px solid var(--hb-charcoal)}
+.theme-yellow{--accent:var(--hb-blue-ink)}
+.theme-yellow .page-hero{border-top:4px solid var(--hb-blue)}
+.yellow-section{background:var(--hb-blue-soft);color:var(--text);--text:#1E2126;--muted:#45505C;--line:#BCD5EE;--accent:var(--hb-blue-ink)}
+.yellow-section .course-card:hover{background:#D3E7FA}
+/* Future Creators Summit: logo is white, so its hero and feature bands are dark */
+.theme-blue{--accent:#8F5200}
+.theme-blue .page-hero{background:radial-gradient(ellipse at 90% 0%,#3A2A0F,transparent 60%),var(--hb-night);border-top:4px solid var(--fcs-orange);--text:#F4F6F8;--muted:#C9CFD6;--accent:var(--fcs-orange);color:#F4F6F8}
+.theme-blue .page-hero .button:not(.ghost){background:var(--fcs-orange);border-color:var(--fcs-orange);color:#16191D}
+.theme-blue .page-hero .button:not(.ghost):hover{background:#fff;border-color:#fff}
+.theme-blue .page-hero .button.ghost{background:transparent;color:#fff;border-color:#FFFFFF66}
+.theme-blue .page-hero .button.ghost:hover{border-color:#fff;color:#fff}
+.blue-section{background:var(--hb-night);color:#fff;--text:#fff;--muted:#D5DAE0;--accent:var(--fcs-orange);--line:#3A4049}
+.blue-section .button{background:var(--fcs-orange);color:#16191D;border-color:var(--fcs-orange)}
+.edition-card em{color:var(--fcs-orange)}
+.edition-card .button{color:#16191D}
+.home-summit{background:var(--panel);color:var(--text)}
+.summit-feature-art{background:var(--hb-night)}
+.summit-feature-art>span{color:#fff}
+.summit-feature-art em{color:var(--fcs-orange)}
+.summit-feature-art small{color:#C9CFD6}
+.summit-star{background:repeating-conic-gradient(from 0deg,#48A858 0deg 10deg,transparent 10deg 30deg)}
+.summit-feature-copy .eyebrow{color:#2F7A3C}
+.summit-feature-copy p{color:var(--muted)}
+.summit-feature-copy .button{background:var(--hb-charcoal);color:#fff}
+
+/* Footer stays dark charcoal and uses the light logo */
+footer{background:var(--hb-night)}
+.footer-grid>div>h3{color:#F4F6F8}
+.footer-grid>div>p{color:#B6BEC8}
+.footer-grid>div>a:not(.footer-logo){color:#C9CFD6}
+.footer-grid>div>a:hover{color:#6FB6F5}
+.footer-bottom{color:#9AA4AF}
+footer .logo{height:56px}
