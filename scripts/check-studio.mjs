@@ -24,6 +24,7 @@ const env={STAFF_INVITES:JSON.stringify(roster),STUDIO:{get:()=>studio,idFromNam
 const origin='https://example.test';
 const call=(path,account,data)=>worker.fetch(new Request(origin+path,{method:data?'POST':'GET',headers:{origin,'Content-Type':'application/json',...(account?{authorization:'Basic '+btoa(account)}:{})},body:data?JSON.stringify(data):undefined}),env);
 for (const name of Object.keys(roster)) {
+  env.STAFF_INVITES=name==='editor' ? roster : JSON.stringify(roster);
   const d={name,token:roster[name].token,password:'password-for-testing-'+name};
   assert.equal((await call('/staff/activate',null,{...d,token:'incorrect'})).status,403);
   assert.equal((await call('/staff/activate',null,{...d,password:'short'})).status,400);

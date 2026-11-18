@@ -11,10 +11,16 @@ const digest = s => crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
 
 const encode = value => new TextEncoder().encode(value);
 const hex = buffer => Array.from(new Uint8Array(buffer), b => b.toString(16).padStart(2,'0')).join('');
+function readRoster(binding) {
+  let rows=binding;
+  if (typeof rows==='string') {
+    try {rows=JSON.parse(rows);} catch {return null;}
+  }
+  return rows && typeof rows==='object' && !Array.isArray(rows) ? rows : null;
+}
 function invitation(env,name) {
   if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(name)) return null;
-  let rows;
-  try { rows=JSON.parse(env.STAFF_INVITES || '{}'); } catch {return null;}
+  const rows=readRoster(env.STAFF_INVITES);
   const row=rows && Object.hasOwn(rows,name) && rows[name];
   if (!row || !['manager','editor','inbox'].includes(row.role) ||
       !/^[A-Za-z0-9_-]{43,128}$/.test(row.token) || !Number.isFinite(Date.parse(row.expires))) return null;
@@ -68,14 +74,17 @@ export default {async fetch(request,env) {
     let d; try { d=await readJson(request,6000); } catch {return fail('Invalid request.');}
     if (typeof d?.password!=='string' || d.password.length<15 || d.password.length>256) return fail('Use a password of 15 to 256 characters.');
     const row=invitation(env,d.name);
-    const denied=()=>fail('Invitation invalid, expired or already used.',403);
-    if (!row || typeof d.token!=='string' || Date.parse(row.expires)<=Date.now()) return denied();
+    if (!readRoster(env.STAFF_INVITES)) return fail('Staff invitations are not configured correctly on this Worker. Check the production STAFF_INVITES secret and deploy.',503);
+    const denied=()=>fail('This username and invitation code do not match the deployed invitation. Reopen the original invitation link or ask for a new one.',403);
+    const used=()=>fail('This invitation was already used. Open /admin/ and sign in with the password you set.',403);
+    if (!row || typeof d.token!=='string') return denied();
     const tag=await digest(row.token);
     if (!crypto.subtle.timingSafeEqual(tag,await digest(d.token))) return denied();
     const version=hex(tag);
-    if (await store.credential(d.name,version)) return denied();
+    if (await store.credential(d.name,version)) return used();
+    if (Date.parse(row.expires)<=Date.now()) return fail('This invitation has expired. Ask for a new invitation.',403);
     const salt=crypto.randomUUID(), hash=hex(await passwordHash(d.password,salt));
-    return await store.activate(d.name,version,salt,hash) ? json({saved:true},201) : denied();
+    return await store.activate(d.name,version,salt,hash) ? json({saved:true},201) : used();
   }
   if (path === '/admin' || path.startsWith('/admin/')) {
     const role = await staff(request,env,store);
