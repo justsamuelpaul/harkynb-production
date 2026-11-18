@@ -8,7 +8,9 @@ All configuration examples below are illustrative structures. Do not publish sam
 
 `siteUrl`: the final HTTPS origin, without a trailing slash.
 
-`logo`: an approved asset path, such as `/media/harkynb-logo.svg`. Empty uses a text wordmark.
+`logo`: an approved asset path, such as `/brand/harkynb-production.png`, shown on light backgrounds. Empty uses a text wordmark.
+
+`logoOnDark`: a light version of the logo for the dark footer. Empty reuses `logo`.
 
 `heroVideo`: reserved for a future approved hero montage. This first version uses an abstract CSS composition; it does not play video.
 

@@ -1,7 +1,8 @@
 {
   "reviewMode": true,
   "siteUrl": "",
-  "logo": "",
+  "logo": "/brand/harkynb-production.png",
+  "logoOnDark": "/brand/harkynb-production-light.png",
   "heroVideo": "",
   "contacts": {
     "production": { "email": "", "whatsapp": "" },
