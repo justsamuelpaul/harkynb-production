@@ -27,6 +27,7 @@ Both Workers build from the same repository and branch, `main`. With root direct
 | Staff access | Admin `/team`. The designated owner and managers approve roles. |
 | Page text, photos and restore | Admin `/admin/page`. The generated `/editor-pages.json` lists editable pages and fields. Editors and managers publish to the public Worker's Studio object. |
 | Form inbox | Admin `/admin/enquiries`. Inbox staff and managers can read submissions, filter by brand, status or assignee, set status (New, In progress, Resolved) and assign an enquiry to anyone with inbox access. |
+| Portfolio and news | Admin `/admin/collections` and `/admin/media`. Editors and managers add, edit, reorder and remove portfolio projects and news updates, upload photos, then publish the whole list or restore the previous version. Until a list is first published, the editor starts from `content/settings.json`. Projects added here get their page at `/work/<web address>/`. |
 | Enquiry alerts | Admin `/admin/alerts`. Every approved account sees how many enquiries arrived since they last checked, refreshed every 30 seconds while the console is open. Editors see counts only, never enquiry details. Staff can also allow desktop alerts in their browser. |
 | Published photo URLs | Public `/media/{id}`. The admin Worker retrieves previews through its SITE binding. |
 

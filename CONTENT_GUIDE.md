@@ -22,6 +22,8 @@ The five team keys are `production`, `onevoicefm`, `shotit`, `academy`, and `sum
 
 ## Projects
 
+Once staff publish the portfolio or news list in the staff console (Portfolio & news), the published list replaces `projects` or `news` from this file on the live site, and edits here no longer appear. Make further changes in the console. Restoring the first published version returns to this file's content.
+
 ```json
 {
   "slug": "unique-approved-project-slug",

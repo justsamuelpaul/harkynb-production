@@ -1,6 +1,8 @@
 import {consoleHtml} from '../studio-view.mjs';
 import {entrance,pending,team,site,logout} from './views.mjs';
 import {hash} from './accounts.mjs';
+import {collectionNames,projectCategories} from '../shared/collections.mjs';
+import {teams} from '../shared/render.mjs';
 // Preserve the Studio namespace from this Worker's first deployment.
 export {Studio} from '../worker.mjs';
 export {Accounts} from './accounts.mjs';
@@ -67,7 +69,7 @@ export default {async fetch(request,env){
     await accounts.change(id,r);return redirect('/team');
   }
   if(method==='GET' && ['/admin','/admin/'].includes(path))return html(consoleHtml(role).replace('href="/">View website','href="'+site+'">View website').replace('</header>',(role==='manager'?'<a href="/team">Staff access</a>':'')+logout+'</header>'));
-  if(role!=='inbox' && method==='GET' && (path==='/editor-pages.json'||/^\/media\/[0-9a-f-]{36}$/.test(path)||path.startsWith('/art/')))return env.SITE.fetch(new URL(path,site));
+  if(role!=='inbox' && method==='GET' && (path==='/editor-pages.json'||/^\/media\/(?:[0-9a-f-]{36}|[a-z0-9][a-z0-9-]*\.(?:jpg|jpeg|png|webp))$/.test(path)||path.startsWith('/art/')))return env.SITE.fetch(new URL(path,site));
   const store=env.STUDIO.get(env.STUDIO.idFromName('production'));
     // Every approved account sees alert counts (no personal details). Only inbox staff and managers read enquiries.
     if (path==='/admin/alerts' && method==='GET') return json({...await store.alerts(user.id),canRead:role!=='editor'});
@@ -116,6 +118,25 @@ export default {async fetch(request,env){
         const reply = await store.publish(page,manifest[page],d);
         return json(reply,reply.status || 200);
       }
+    }
+    // Portfolio and news lists. Until staff first publish a list, the editor starts from the content built with the site.
+    if (path==='/admin/collections' && role!=='inbox') {
+      const name = url.searchParams.get('name');
+      if (!collectionNames.includes(name)) return fail('Unknown list.',404);
+      if (method==='GET') {
+        const state = await store.collection(name);
+        const items = state.items ?? (await (await env.SITE.fetch(new URL('/editor-collections.json',site))).json())[name] ?? [];
+        return json({...state,items,published:state.items!==null,categories:projectCategories,teams});
+      }
+      let d; try { d=await readJson(request,400000); } catch {return fail('Invalid or oversized change.');}
+      const reply = await store.saveCollection(name,d);
+      return json(reply,reply.status || 200);
+    }
+    if (path==='/admin/media' && role!=='inbox' && method==='POST') {
+      let d; try { d=await readJson(request,1250000); } catch {return fail('Choose a smaller photograph.');}
+      if (typeof d?.image!=='string') return fail('Choose a photograph.');
+      const reply = await store.storeImage(d.image);
+      return json(reply,reply.status || 200);
     }
   return fail('Unavailable for this account.',403);
 }};

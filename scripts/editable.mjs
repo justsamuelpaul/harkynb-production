@@ -2,6 +2,9 @@ import {createHash} from 'node:crypto';
 
 export function markEditable(body) {
   const fields = {}, photos = {};
+  // Staff-editable lists are edited in the list editor, not as page text.
+  const lists = [];
+  body = body.replace(/<!--collection-->[\s\S]*?<!--\/collection-->/g, region => '\u0000' + (lists.push(region) - 1) + '\u0000');
   const key = value => createHash('sha256').update(value).digest('hex').slice(0,16);
   function unique(map, base) {
     let id = base, n = 1;
@@ -17,7 +20,7 @@ export function markEditable(body) {
     return '<' + tag + attrs + ' data-copy="' + id + '">' + inner + '</' + tag + '>';
   });
   html = html.replace(/<img\b[^>]*>/g, image => {
-    if (/data-static/.test(image)) return image;
+    if (/\bdata-static\b/.test(image)) return image;
     const source = image.match(/\bsrc="([^"]+)"/)?.[1];
     if (!source) return image;
     const id = unique(photos,key(source));
@@ -26,5 +29,6 @@ export function markEditable(body) {
   });
   photos.feature = {label:'Additional page photograph',source:''};
   html = html.replace('</section>','</section><figure data-feature class="wrap" hidden><img data-picture="feature" alt="" class="staff-feature-photo"></figure>');
+  html = html.replace(/\u0000(\d+)\u0000/g, (m, i) => lists[i]);
   return {fields,photos,html};
 }

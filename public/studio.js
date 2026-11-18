@@ -72,9 +72,8 @@ function renderOrphans() {
   }));
 }
 function run(fn){return (...args)=>Promise.resolve().then(()=>fn(...args)).catch(e=>say(e.message));}
-async function preparePhoto() {
-  const ticket=++imageVersion, file=$('photo').files[0]; pendingImage=null;
-  if (!file) {displayField();return;}
+// Resize to 1600px on the long edge and re-encode as a JPEG under the server's 900 KB limit. Returns a data URL.
+async function compressPhoto(file) {
   if (file.size>25*1024*1024) throw Error('Choose a photograph smaller than 25 MB.');
   const bmp=await createImageBitmap(file);
   const scale=Math.min(1,1600/Math.max(bmp.width,bmp.height));
@@ -83,8 +82,14 @@ async function preparePhoto() {
   const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bmp,0,0,canvas.width,canvas.height);bmp.close();
   let data;
   for(const q of [.84,.72,.55,.4]) {data=canvas.toDataURL('image/jpeg',q);if(data.length<1200000) break;}
-  if (ticket!==imageVersion) return;
   if (data.length>=1200000) throw Error('Choose a smaller photograph.');
+  return data;
+}
+async function preparePhoto() {
+  const ticket=++imageVersion, file=$('photo').files[0]; pendingImage=null;
+  if (!file) {displayField();return;}
+  const data=await compressPhoto(file);
+  if (ticket!==imageVersion) return;
   pendingImage=data.split(',')[1];$('preview').src=data;$('preview').hidden=false;say('Photograph ready to publish.');
 }
 async function save(restore=false) {
@@ -175,8 +180,103 @@ if ('Notification' in window && Notification.permission==='default') {
 setInterval(refreshAlerts,30000);
 document.addEventListener('visibilitychange',()=>{if (!document.hidden) refreshAlerts();});
 
+
+// Portfolio & news list editor. Edits stay in the browser until "Publish list"; photos upload as soon as they are chosen.
+let listState=null, draft=[], listDirty=false, listLoad=0;
+const slugify=s=>s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80).replace(/-+$/,'');
+const markDirty=()=>{listDirty=true;};
+const cleanItems=items=>JSON.parse(JSON.stringify(items,(k,v)=>k.startsWith('_')?undefined:v));
+function textField(obj,key,label,{max=160,rows=0,type='text',hint='',onInput}={}) {
+  const field=rows?el('textarea',{rows,maxLength:max}):el('input',{type,maxLength:max});
+  field.value=obj[key]||'';
+  field.oninput=()=>{obj[key]=field.value;markDirty();onInput?.(field.value);};
+  return el('label',{},label,...(hint?[el('small',{textContent:hint})]:[]),field);
+}
+function choiceField(obj,key,label,options) {
+  const field=el('select',{},...options.map(([value,text])=>new Option(text,value)));
+  field.value=obj[key]||'';
+  field.onchange=()=>{obj[key]=field.value;markDirty();};
+  return el('label',{},label,field);
+}
+function photoField(obj,key,altKey,label) {
+  const preview=el('img',{className:'list-photo',alt:''});
+  preview.hidden=!obj[key]; if (obj[key]) preview.src=obj[key];
+  const file=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp'});
+  file.onchange=run(async()=>{
+    if (!file.files[0]) return;
+    file.disabled=true; say('Uploading photo…');
+    try {
+      const data=await compressPhoto(file.files[0]);
+      const {id}=await api('/admin/media',{image:data.split(',')[1]});
+      obj[key]='/media/'+id; preview.src=data; preview.hidden=false; markDirty();
+      say('Photo uploaded. Publish the list to show it on the website.');
+    } finally {file.disabled=false; file.value='';}
+  });
+  return el('div',{className:'list-photo-field'},el('strong',{textContent:label}),preview,el('label',{},obj[key]?'Replace photo':'Choose photo',file),textField(obj,altKey,'Photo description',{max:300,hint:'Describe what the photo shows, for visitors using screen readers.'}));
+}
+function moveButtons(array,i,rerender,noun) {
+  const move=to=>()=>{const [item]=array.splice(i,1);array.splice(to,0,item);markDirty();rerender();};
+  const remove=()=>{if(!confirm('Remove this '+noun+'? It will disappear from the website when you publish.'))return;array.splice(i,1);markDirty();rerender();};
+  return el('div',{className:'item-controls'},
+    el('button',{type:'button',textContent:'Move up',disabled:i===0,onclick:move(i-1)}),
+    el('button',{type:'button',textContent:'Move down',disabled:i===array.length-1,onclick:move(i+1)}),
+    el('button',{type:'button',textContent:'Remove',onclick:remove}));
+}
+function projectFields(p) {
+  const slugInput=textField(p,'slug','Web address',{max:80,hint:'Lowercase words joined by hyphens. The page will be at /work/<web address>/.',onInput:()=>{p._autoSlug=false;}});
+  const title=textField(p,'title','Project title',{onInput:value=>{if(p._autoSlug){p.slug=slugify(value);slugInput.querySelector('input').value=p.slug;}}});
+  const galleryBox=el('div',{className:'list-gallery'});
+  const renderGallery=()=>galleryBox.replaceChildren(...(p.gallery||[]).map((g,j)=>el('div',{className:'list-gallery-item'},
+    photoField(g,'image','alt','Gallery photo '+(j+1)),textField(g,'title','Caption'),textField(g,'credit','Credit',{max:120}),moveButtons(p.gallery,j,renderGallery,'photo'))));
+  renderGallery();
+  return [title,slugInput,
+    choiceField(p,'category','Category',[['','Choose a category'],...listState.categories.map(c=>[c,c])]),
+    choiceField(p,'team','Enquiries from this page go to',[['','HarkynB Production'],...listState.teams.filter(t=>t!=='production').map(t=>[t,teamNames[t]||t])]),
+    textField(p,'description','Summary',{max:600,rows:3}),textField(p,'services','Services delivered',{max:200}),textField(p,'location','Location',{max:120}),
+    textField(p,'credit','Credit',{max:120,hint:'The brand that produced the work, such as HarkynBShotIt.'}),
+    photoField(p,'image','alt','Cover photo'),
+    el('h4',{textContent:'Gallery'}),galleryBox,
+    el('button',{type:'button',textContent:'Add gallery photo',onclick:()=>{(p.gallery||=[]).push({title:'',image:'',alt:'',credit:p.credit||''});markDirty();renderGallery();}})];
+}
+const newsFields=n=>[textField(n,'title','Headline'),textField(n,'date','Date',{max:40,hint:'As it should appear, for example 18 November 2026.'}),textField(n,'description','Summary',{max:600,rows:3}),textField(n,'url','Link to the full story (optional)',{max:500,type:'url',hint:'Must start with https://'})];
+function renderList() {
+  const name=$('list-name').value;
+  $('list-items').replaceChildren(...draft.map((item,i)=>{
+    const summary=el('summary',{textContent:(i+1)+'. '+(item.title||'Untitled')+(item.category?' · '+item.category:'')+(item.date?' · '+item.date:'')});
+    return el('details',{open:!item.title},summary,...(name==='news'?newsFields(item):projectFields(item)),moveButtons(draft,i,renderList,name==='news'?'update':'project'));
+  }));
+  if (!draft.length) $('list-items').textContent=name==='news'?'No news updates yet.':'No projects yet.';
+  $('list-status').textContent=listState.published?'This list is managed here. Changes appear on the website when you publish.':'Showing the content built with the website. Once you publish, this list is managed here.';
+  $('list-restore').disabled=!listState.canRestore;
+  $('list-add').textContent=name==='news'?'Add news update':'Add project';
+}
+async function loadList() {
+  const ticket=++listLoad, state=await api('/admin/collections?name='+$('list-name').value);
+  if (ticket!==listLoad) return;
+  listState=state; draft=structuredClone(state.items); listDirty=false; renderList();
+}
+async function saveList(restore=false) {
+  if (restore && !confirm('Restore the previous published version of this list? Unsaved changes will be lost.')) return;
+  const body=restore?{revision:listState.revision,restore:true}:{revision:listState.revision,items:cleanItems(draft)};
+  const buttons=['list-add','list-publish','list-restore','list-reset'].map($);
+  buttons.forEach(b=>b.disabled=true);
+  try {await api('/admin/collections?name='+$('list-name').value,body);}
+  finally {buttons.forEach(b=>b.disabled=false);}
+  await loadList(); say(restore?'Previous version restored.':'Published to the website.');
+}
+if ($('lists')) {
+  $('list-name').onchange=run(async()=>{
+    if (listDirty && !confirm('Discard unsaved changes to this list?')) {$('list-name').value=$('list-name').value==='news'?'projects':'news';return;}
+    await loadList();
+  });
+  $('list-add').onclick=()=>{draft.push($('list-name').value==='news'?{title:'',date:'',description:'',url:''}:{_autoSlug:true,slug:'',title:'',category:'',team:'',description:'',location:'',services:'',image:'',alt:'',credit:'',gallery:[]});markDirty();renderList();};
+  $('list-publish').onclick=run(()=>saveList());
+  $('list-restore').onclick=run(()=>saveList(true));
+  $('list-reset').onclick=run(async()=>{if(!listDirty||confirm('Discard unsaved changes?'))await loadList();});
+  addEventListener('beforeunload',e=>{if(listDirty)e.preventDefault();});
+}
 const tabs=[...document.querySelectorAll('[data-tab]')];
-tabs.forEach(tab=>tab.onclick=run(async()=>{for(const t of tabs){const active=t===tab;t.setAttribute('aria-pressed',active);$(t.dataset.tab).hidden=!active;}say('');if(tab.dataset.tab==='inbox')await loadInbox();}));
+tabs.forEach(tab=>tab.onclick=run(async()=>{for(const t of tabs){const active=t===tab;t.setAttribute('aria-pressed',active);$(t.dataset.tab).hidden=!active;}say('');if(tab.dataset.tab==='inbox')await loadInbox();if(tab.dataset.tab==='lists'&&!listState)await loadList();}));
 if ($('inbox')) {
   $('refresh').onclick=run(()=>loadInbox()); $('older').onclick=run(()=>loadInbox(true));
   for (const id of ['f-team','f-status','f-assigned']) $(id).onchange=run(()=>loadInbox());

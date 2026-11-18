@@ -52,11 +52,34 @@ export default {async fetch(request,env) {
     const image = await store.photo(path.slice(7));
     return image ? new Response(image.bytes,{headers:{'Content-Type':image.mime,'Cache-Control':'public,max-age=86400','X-Content-Type-Options':'nosniff'}}) : fail('Unknown image.',404);
   }
+  // Once staff publish the portfolio list, it decides which project pages exist, including ones added in the console.
+  if (/^\/work\/_project\/?$/.test(path)) return notFound(env,url);
+  const project = request.method==='GET' && path.match(/^\/work\/([a-z0-9]+(?:-[a-z0-9]+)*)\/?$/);
+  if (project) {
+    const {projects} = await store.collections();
+    if (projects) {
+      const p = projects.find(x=>x.slug===project[1]);
+      if (!p) return notFound(env,url);
+      const title = p.title+' | HarkynB Production', description = p.description || p.title;
+      const template = await env.ASSETS.fetch(new Request(new URL('/work/_project/',url)));
+      const output = new HTMLRewriter()
+        .on('title',{element(el){el.setInnerContent(title);}})
+        .on('meta[name="description"]',{element(el){el.setAttribute('content',description);}})
+        .on('meta[property="og:title"]',{element(el){el.setAttribute('content',title);}})
+        .on('meta[property="og:description"]',{element(el){el.setAttribute('content',description);}})
+        .on('main#main',{element(el){el.setInnerContent(projectMain(p),{html:true});}})
+        .transform(template);
+      return new Response(output.body,{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
+    }
+  }
   const res = await env.ASSETS.fetch(request);
   if (request.method!=='GET' || res.status!==200 || !res.headers.get('content-type')?.includes('text/html')) return res;
   const page = path.replace(/index\.html$/,'').replace(/\/?$/,'/');
   const {current} = await store.page(page);
+  // Pages showing staff-editable lists use the published list when there is one.
+  const lists = ['/work/','/brands/harkynbshotit/','/news/'].includes(page) ? await store.collections() : {};
   const rewrite = new HTMLRewriter()
+    .on('[data-collection]',{element(el){const items=lists[el.getAttribute('data-collection')], view=views[el.getAttribute('data-collection')+':'+el.getAttribute('data-view')]; if(items && view) el.setInnerContent(view(items),{html:true});}})
     .on('[data-copy]',{element(el){const value=current.text[el.getAttribute('data-copy')]; if(typeof value==='string') el.setInnerContent(value);}})
     .on('[data-feature]',{element(el){if(current.images.feature) el.removeAttribute('hidden');}})
     .on('[data-picture]',{element(el){const img=current.images[el.getAttribute('data-picture')]; if(img){el.setAttribute('src','/media/'+img.id);el.setAttribute('alt',img.alt);}}});
@@ -66,7 +89,22 @@ export default {async fetch(request,env) {
   return new Response(output.body,{headers});
 }};
 
+// Base64 JPEG up to 900 KB, as prepared by the staff console. Returns bytes or {error}.
+function decodeJpeg(image) {
+  let bytes;
+  try {bytes=Uint8Array.from(atob(image),c=>c.charCodeAt(0));} catch {return {error:'Invalid image.'};}
+  const jpg=bytes[0]===255 && bytes[1]===216 && bytes[2]===255;
+  return jpg && bytes.length<=900000 ? bytes : {error:'Choose a smaller JPEG image.'};
+}
+// The site's normal 404 page, with a 404 status.
+async function notFound(env,url) {
+  const res = await env.ASSETS.fetch(new Request(new URL('/__not-found__/',url)));
+  return new Response(res.body,{status:404,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
+}
+
 import {DurableObject} from 'cloudflare:workers';
+import {views,projectMain} from './shared/render.mjs';
+import {validateCollection} from './shared/collections.mjs';
 export class Studio extends DurableObject {
   constructor(ctx,env) {
     super(ctx,env);
@@ -75,6 +113,41 @@ export class Studio extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS pages(path TEXT PRIMARY KEY,revision INTEGER,current TEXT,previous TEXT); CREATE TABLE IF NOT EXISTS media(id TEXT PRIMARY KEY,mime TEXT,bytes BLOB); CREATE TABLE IF NOT EXISTS enquiries(id TEXT UNIQUE,created TEXT,entry TEXT,status TEXT); CREATE TABLE IF NOT EXISTS limits(bucket TEXT PRIMARY KEY,n INTEGER,expires INTEGER)');
     // Assignment and per-staff 'seen' state live in their own tables so the original enquiries schema needs no migration.
     this.sql.exec('CREATE TABLE IF NOT EXISTS assignments(id TEXT PRIMARY KEY,user TEXT,name TEXT); CREATE TABLE IF NOT EXISTS seen(user TEXT PRIMARY KEY,cursor INTEGER)');
+    // Published staff lists (portfolio projects, news). previous='built' means restoring returns to the content built with the site.
+    this.sql.exec('CREATE TABLE IF NOT EXISTS collections(name TEXT PRIMARY KEY,revision INTEGER,current TEXT,previous TEXT)');
+  }
+  collections() {
+    const out = {projects:null,news:null};
+    for (const row of this.sql.exec('SELECT name,current FROM collections').toArray()) out[row.name] = JSON.parse(row.current);
+    return out;
+  }
+  collection(name) {
+    const row = this.sql.exec('SELECT * FROM collections WHERE name=?',name).toArray()[0];
+    return row ? {revision:row.revision,items:JSON.parse(row.current),canRestore:!!row.previous} : {revision:0,items:null,canRestore:false};
+  }
+  saveCollection(name,d) {
+    const state = this.collection(name);
+    if (d?.revision!==state.revision) return {status:409,error:'This list changed since you opened it. Reload it before publishing.'};
+    if (d.restore) {
+      const previous = this.sql.exec('SELECT previous FROM collections WHERE name=?',name).toArray()[0]?.previous;
+      if (!previous) return {status:400,error:'No previous version.'};
+      if (previous==='built') this.sql.exec('DELETE FROM collections WHERE name=?',name);
+      else this.sql.exec('UPDATE collections SET revision=?,current=?,previous=NULL WHERE name=?',state.revision+1,previous,name);
+      return this.collection(name);
+    }
+    const checked = validateCollection(name,d.items,id=>this.sql.exec('SELECT 1 FROM media WHERE id=?',id).toArray().length>0);
+    if (checked.error) return {status:400,error:checked.error};
+    const previous = state.items===null ? 'built' : JSON.stringify(state.items);
+    this.sql.exec('INSERT OR REPLACE INTO collections VALUES(?,?,?,?)',name,state.revision+1,JSON.stringify(checked.items),previous);
+    return this.collection(name);
+  }
+  // Store an uploaded JPEG (base64) and return its id; it is served at /media/<id>.
+  storeImage(image) {
+    const bytes = decodeJpeg(image);
+    if (bytes.error) return {status:400,error:bytes.error};
+    const id = crypto.randomUUID();
+    this.sql.exec('INSERT INTO media VALUES(?,?,?)',id,'image/jpeg',bytes);
+    return {id};
   }
   credential(name,version) {
     return this.sql.exec('SELECT salt,hash FROM credentials WHERE name=? AND version=?',name,version).toArray()[0] || null;
@@ -139,10 +212,8 @@ export class Studio extends DurableObject {
       if (d.value===schema.fields[d.key].value) {delete next.text[d.key]; delete next.was[d.key];}
       else {next.text[d.key]=d.value.trim(); next.was[d.key]=schema.fields[d.key].value;}
     } else if (Object.hasOwn(schema.photos,d.key) && typeof d.image==='string' && typeof d.alt==='string' && d.alt.trim() && d.alt.length<=300) {
-      let bytes;
-      try {bytes=Uint8Array.from(atob(d.image),c=>c.charCodeAt(0));} catch {return {status:400,error:'Invalid image.'};}
-      const jpg=bytes[0]===255 && bytes[1]===216 && bytes[2]===255;
-      if (!jpg || bytes.length>900000) return {status:400,error:'Choose a smaller JPEG image.'};
+      const bytes=decodeJpeg(d.image);
+      if (bytes.error) return {status:400,error:bytes.error};
       const id=crypto.randomUUID(); upload={id,bytes}; next.images[d.key]={id,alt:d.alt.trim()};
     } else return {status:400,error:'Invalid change.'};
     this.ctx.storage.transactionSync(()=>{
