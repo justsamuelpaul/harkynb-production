@@ -1,6 +1,8 @@
 import {consoleHtml} from '../studio-view.mjs';
 import {entrance,pending,team,site,logout} from './views.mjs';
 import {hash} from './accounts.mjs';
+// Preserve the Studio namespace from this Worker's first deployment.
+export {Studio} from '../worker.mjs';
 export {Accounts} from './accounts.mjs';
 const privateHeaders = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const json = (body,status=200) => Response.json(body,{status,headers:privateHeaders});

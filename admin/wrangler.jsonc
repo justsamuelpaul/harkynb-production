@@ -24,6 +24,12 @@
   },
   "migrations": [
     {
+      "tag": "studio-v1",
+      "new_sqlite_classes": [
+        "Studio"
+      ]
+    },
+    {
       "tag": "accounts-v1",
       "new_sqlite_classes": [
         "Accounts"
