@@ -41,7 +41,8 @@ export default {async fetch(request,env){
   const url=new URL(request.url),path=url.pathname, method=request.method;
   if(!['GET','POST'].includes(method))return fail('Method not allowed.',405);
   if(method==='POST' && request.headers.get('origin')!==url.origin)return fail('Invalid origin.',403);
-  if(method==='GET' && ['/studio.css','/studio.js'].includes(path))return env.SITE.fetch(new URL(path,site));
+  if(method==='GET' && (['/studio.css','/studio.js','/favicon.svg'].includes(path)||/^\/brand\/[a-z0-9-]+\.png$/.test(path)))return env.SITE.fetch(new URL(path,site));
+  if(method==='GET' && path==='/favicon.ico')return Response.redirect(new URL('/favicon.svg',url),301);
   const accounts=env.IDENTITY.get(env.IDENTITY.idFromName('staff'));
   if(method==='GET' && ['/','/login','/signup'].includes(path))return html(entrance(path==='/signup'));
   if(method==='POST' && ['/signup','/login'].includes(path)){

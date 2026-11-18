@@ -2,8 +2,6 @@ const privateHeaders = {'Cache-Control':'no-store','X-Content-Type-Options':'nos
 const json = (body,status=200) => Response.json(body,{status,headers:privateHeaders});
 const fail = (error,status=400) => json({error},status);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const teams = ['production','onevoicefm','shotit','academy','summit'];
-const fields = ['team','service','name','email','phone','organisation','date','location','budget','message','method'];
 const digest = s => crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
 
 async function readJson(request,max) {
@@ -37,12 +35,9 @@ export default {async fetch(request,env) {
     if (request.headers.get('origin')!==url.origin) return fail('Invalid origin.',403);
     let d; try {d=await readJson(request,18000);} catch {return fail('Invalid submission.');}
     if (!d || !uuid.test(d.requestId)) return fail('Invalid submission.');
-    const entry = {};
-    for (const k of fields) {
-      if (typeof d[k]!=='string' || d[k].length>(k==='message'?5000:200)) return fail('Check the form fields.');
-      entry[k]=d[k].trim();
-    }
-    if (!teams.includes(entry.team)||!entry.name||entry.message.length<10||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(entry.email)) return fail('Check your name, email, team and message.');
+    // Each team has its own questions; see shared/forms.mjs.
+    const {entry,error} = validateEnquiry(d);
+    if (error) return fail(error);
     const ip = request.headers.get('CF-Connecting-IP') || 'local';
     const bucket = Array.from(new Uint8Array(await digest(ip+'|'+Math.floor(Date.now()/600000)))).join('.');
     const saved = await store.submit(d.requestId,entry,bucket);
@@ -105,6 +100,7 @@ async function notFound(env,url) {
 import {DurableObject} from 'cloudflare:workers';
 import {views,projectMain} from './shared/render.mjs';
 import {validateCollection} from './shared/collections.mjs';
+import {validateEnquiry} from './shared/forms.mjs';
 export class Studio extends DurableObject {
   constructor(ctx,env) {
     super(ctx,env);

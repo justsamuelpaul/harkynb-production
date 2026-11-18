@@ -23,7 +23,20 @@ const origin='https://example.test';
 const call=(path,account,data)=>worker.fetch(new Request(origin+path,{method:data?'POST':'GET',headers:{origin,'Content-Type':'application/json'},body:data?JSON.stringify(data):undefined}),env);
 assert.match((await call('/staff/setup/?token=obsolete')).headers.get('Location'),/workers\.dev\/signup#$/);
 assert.equal((await call('/admin/enquiries')).status,410);
-const data={requestId:crypto.randomUUID(),team:'shotit',name:'Test visitor',email:'test@example.com',service:'Photography',message:'A test booking request',phone:'',location:'',date:'',organisation:'',budget:'',method:'Email'};
+const data={requestId:crypto.randomUUID(),team:'shotit',name:'Test visitor',email:'test@example.com',shoot:'Weddings',message:'A test booking request',phone:'0800 000 0000',location:'Lagos',date:'2026-12-05',budget:'',method:'Email'};
+// Each team's form has its own required questions, follow-ups and allowed answers.
+const tryForm=async d=>call('/api/enquiries',null,{requestId:crypto.randomUUID(),name:'Visitor',email:'v@example.com',phone:'0800',message:'Tell me more about this, please.',...d});
+assert.equal((await tryForm({team:'shotit'})).status,400,'ShotIt needs a type of shoot');
+assert.equal((await tryForm({team:'shotit',shoot:'Underwater'})).status,400,'answers must be one of the choices');
+assert.equal((await tryForm({team:'nowhere'})).status,400);
+const student={team:'academy',as:'A prospective student',age:'18 to 24',city:'Ibadan, Oyo',programmes:['Photography','Video Editing'],experience:'Complete beginner',occupation:'Recent graduate',format:'Online'};
+assert.equal((await tryForm({...student,programmes:[]})).status,400,'students choose at least one programme');
+assert.equal((await tryForm({...student,programmes:['Juggling']})).status,400);
+assert.equal((await tryForm({...student,age:'16 to 17'})).status,400,'under-18 students need a parent or guardian');
+assert.equal((await tryForm({team:'academy',as:'A school or organisation'})).status,400,'schools give their name and programmes');
+assert.equal((await tryForm({team:'summit',type:'Speaker application'})).status,400,'Summit takes enquiries and partnerships only');
+assert.equal((await tryForm({team:'summit',type:'Partnership or sponsorship',organisation:'Acme'})).status,400,'partners choose an area');
+
 assert.equal((await call('/api/enquiries',null,{...data,email:'bad'})).status,400);
 for(let i=0;i<2;i++)assert.equal((await call('/api/enquiries',null,data)).status,201);
 const {default:admin,Accounts}=await import('../admin/index.mjs');
@@ -37,7 +50,7 @@ const registerStaff=async name=>{
   assert.equal(response.status,303);
   return response.headers.get('set-cookie').split(';')[0];
 };
-assert.match(await (await adminCall('/')).text(),/Create a staff account/);
+assert.match(await (await adminCall('/')).text(),/Create an account/);
 const owner=await registerStaff('owner'), member=await registerStaff('member');
 assert.equal((await adminCall('/admin/enquiries',member)).status,403);
 bindings.OWNER_ACCOUNT_ID=accounts.list().find(row=>row.name==='owner').id;
@@ -135,12 +148,15 @@ assert.equal((await adminCall('/team',owner,{id:memberId,role:'inbox'})).status,
 assert.equal((await (await adminCall('/admin/enquiries',member)).json())[0].id,data.requestId);
 
 // Brand and status filters, assignment to inbox staff, and per-person unseen counts.
-const more=[{team:'academy',name:'Academy visitor'},{team:'summit',name:'Summit visitor'}].map(x=>({...data,...x,requestId:crypto.randomUUID()}));
+const more=[{...student,name:'Academy visitor',age:'16 to 17',guardian:'Mrs Visitor, 0800 111 2222',schedule:'Weekends',ignored:'not on this form'},{team:'summit',type:'Partnership or sponsorship',organisation:'Acme Ltd',partnership:['Media partnership'],name:'Summit visitor'}].map(x=>({...data,shoot:undefined,...x,requestId:crypto.randomUUID()}));
 for(const m of more)assert.equal((await call('/api/enquiries',null,m)).status,201);
 assert.equal((await alertsFor(owner)).unseen,3);
 assert.deepEqual(await alertsFor(member),{unseen:2,open:2,mine:0,canRead:true});
 const list=async(c,q='')=>(await adminJson('/admin/enquiries'+q,c)).json();
-assert.deepEqual((await list(owner,'?team=academy')).map(r=>r.entry.name),['Academy visitor']);
+const [academyRow]=await list(owner,'?team=academy');
+assert.equal(academyRow.entry.name,'Academy visitor');assert.equal(academyRow.entry.topic,'A prospective student');
+assert.deepEqual(academyRow.entry.details,[['I am enquiring as','A prospective student'],['Student’s age group','16 to 17'],['Parent or guardian name and phone number','Mrs Visitor, 0800 111 2222'],['City and state of residence','Ibadan, Oyo'],['Programmes you are interested in','Photography, Video Editing'],['Current experience level','Complete beginner'],['Current occupation','Recent graduate'],['Preferred way to learn','Online'],['Preferred schedule','Weekends']],'answers are stored with their labels; questions from other forms are dropped');
+assert.deepEqual((await list(owner,'?team=summit'))[0].entry.details,[['Type of enquiry','Partnership or sponsorship'],['Company or organisation','Acme Ltd'],['Partnership areas of interest','Media partnership']]);
 assert.equal((await list(owner,'?status=open')).length,2);
 assert.equal((await list(owner,'?status=Resolved'))[0].id,data.requestId);
 assert.equal((await adminJson('/admin/enquiries?team=nope',owner)).status,400);

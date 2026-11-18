@@ -1,15 +1,103 @@
+/* Staff portal: login, signup, approval, staff access and the console. HarkynB Production blue and charcoal. */
+:root{--blue:#0878D8;--blue-ink:#0A64B4;--blue-soft:#E3F0FC;--charcoal:#282828;--bg:#F3F6FA;--panel:#fff;--text:#1E2126;--muted:#545A63;--line:#DCE2EA;--warn:#B4400A;--warn-soft:#FFF4ED;--ok:#1F7A3A;--radius:10px}
+*{box-sizing:border-box}
 [hidden]{display:none!important}
-.attention,.orphan{border:2px solid #c2410c;border-radius:6px;padding:.75rem 1rem;margin:.75rem 0}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+a{color:var(--blue-ink)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+
+/* Top bar */
+body>header{display:flex;align-items:center;gap:.5rem 1rem;flex-wrap:wrap;padding:.6rem max(4vw,1rem);background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+body>header .portal-logo{display:block;height:44px;width:auto}
+body>header .portal-home{margin-right:auto;display:flex;align-items:center;gap:.6rem}
+body>header .portal-home span{color:var(--muted);font-weight:600;font-size:.9rem;border-left:1px solid var(--line);padding-left:.6rem}
+body>header a{color:var(--charcoal);text-decoration:none;font-weight:600;font-size:.95rem}
+body>header a:hover{color:var(--blue-ink);text-decoration:underline}
+body>header form{margin:0}
+body>header button{padding:.4rem .8rem;font-size:.9rem}
+
+main{max-width:62rem;margin:2rem auto 4rem;padding:0 1rem}
+h1{font-size:clamp(1.8rem,4vw,2.4rem);line-height:1.15;margin:0 0 1.25rem;color:var(--charcoal)}
+h2{font-size:1.35rem;margin:0 0 1rem;color:var(--charcoal)}
+h3{font-size:1.05rem;margin:1.25rem 0 .5rem}
+h4{margin:1.25rem 0 .25rem}
+section{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:clamp(1rem,3.5vw,2rem);margin:0 0 1.25rem}
+code{background:var(--blue-soft);padding:.15rem .4rem;border-radius:4px;overflow-wrap:anywhere}
+
+/* Forms */
+label{display:grid;gap:.35rem;margin:1rem 0;font-weight:600}
+label small,.hint{font-weight:400;color:var(--muted);font-size:.9rem}
+input,select,textarea,button{font:inherit}
+input:not([type=file]):not([type=checkbox]):not([type=radio]),select,textarea{width:100%;padding:.6rem .7rem;border:1px solid #9AA4B1;border-radius:6px;background:#fff;color:var(--text)}
+input[type=file]{font-size:.95rem}
+textarea{resize:vertical}
+button{cursor:pointer;padding:.55rem 1rem;border:1px solid var(--blue-ink);background:#fff;color:var(--blue-ink);border-radius:6px;font-weight:600}
+button:hover:not(:disabled){background:var(--blue-soft)}
+button:disabled{opacity:.5;cursor:not-allowed}
+#publish,#list-publish,.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+#publish:hover:not(:disabled),#list-publish:hover:not(:disabled),.primary:hover:not(:disabled){background:var(--blue-ink)}
+footer{display:flex;align-items:center;flex-wrap:wrap;gap:.65rem;margin-top:1rem}
+[role=alert]{border-left:4px solid var(--warn);background:var(--warn-soft);padding:.6rem .9rem;border-radius:4px}
+
+/* Login, signup and approval */
+.entrance{max-width:30rem;margin:3rem auto}
+.entrance h1{text-align:center}
+
+/* Console tabs */
+main>nav{display:flex;flex-wrap:wrap;gap:.25rem;border-bottom:2px solid var(--line);margin:0 0 1rem}
+main>nav button{border:0;border-bottom:3px solid transparent;border-radius:6px 6px 0 0;margin-bottom:-2px;background:transparent;color:var(--muted);padding:.65rem 1rem}
+main>nav button[aria-pressed=true]{color:var(--blue-ink);border-bottom-color:var(--blue);background:#fff}
+#notice{min-height:1.5em;margin:.5rem 0;font-weight:600;color:var(--blue-ink)}
+#desktop-alerts{font-size:.9rem;padding:.35rem .8rem;margin:.25rem 0 .5rem}
+
+.badge{display:inline-block;min-width:1.4em;padding:0 .4em;border-radius:999px;background:var(--warn);color:#fff;font-size:.8em;text-align:center;line-height:1.4em}
+.alerts{border-left:4px solid var(--warn);background:var(--warn-soft);padding:.6rem .9rem;margin:.75rem 0;border-radius:4px;display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center}
+
+/* Page editor */
+#preview{display:block;max-width:100%;max-height:26rem;border-radius:6px;margin:.5rem 0}
+.attention,.orphan{border:2px solid var(--warn);background:var(--warn-soft);border-radius:var(--radius);padding:.75rem 1rem;margin:.75rem 0}
+.attention ul{padding-left:1.2rem}
+.attention li{margin:.35rem 0}
 .orphan-photo{display:block;max-width:240px;height:auto}
-.badge{display:inline-block;min-width:1.4em;padding:0 .4em;border-radius:999px;background:#c2410c;color:#fff;font-size:.8em;text-align:center}
-.alerts{border-left:4px solid #c2410c;background:#fff4ed;color:#1c1917;padding:.6rem .9rem;margin:.75rem 0}
+.orphan button{margin-right:.5rem}
+
+/* Enquiries */
 .filters,.enquiry-actions{display:flex;flex-wrap:wrap;gap:.75rem;align-items:end;margin:.75rem 0}
-.list-status{color:#545A63}
-#list-items details{border:1px solid #DCE2EA;border-radius:6px;padding:.6rem 1rem;margin:.6rem 0;background:#fff}
-#list-items summary{font-weight:600;cursor:pointer}
-#list-items label{display:block;margin:.6rem 0}
-#list-items label small{display:block;color:#6B7280}
-#list-items input:not([type=file]),#list-items textarea,#list-items select{display:block;width:100%;max-width:40rem;box-sizing:border-box}
-.list-photo{display:block;max-width:220px;height:auto;margin:.4rem 0;border-radius:4px}
-.list-photo-field,.list-gallery-item{border-left:3px solid #E3F0FC;padding-left:.8rem;margin:.8rem 0}
+.filters label,.enquiry-actions label{margin:0;flex:1 1 11rem}
+#entries>details{border:1px solid var(--line);border-radius:var(--radius);padding:.75rem 1rem;margin:.6rem 0;background:#fff}
+#entries>details[open]{border-color:#B9C7D8;box-shadow:0 2px 10px #1E21260D}
+summary{cursor:pointer;font-weight:600}
+.status-tag{display:inline-block;padding:.05rem .55rem;border-radius:999px;font-size:.8rem;margin-right:.4rem;background:var(--blue-soft);color:var(--blue-ink);vertical-align:1px}
+.status-tag.new{background:var(--warn);color:#fff}
+.status-tag.resolved{background:#E5F3E9;color:var(--ok)}
+dl{display:grid;grid-template-columns:minmax(8rem,1fr) 3fr;gap:.35rem 1rem;margin:1rem 0}
+dt{color:var(--muted)}
+dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.reply-links{display:flex;flex-wrap:wrap;gap:.5rem 1rem;margin:.5rem 0}
+#older{margin-top:.5rem}
+
+/* Portfolio and news lists */
+.list-status{color:var(--muted)}
+#list-items details{border:1px solid var(--line);border-radius:var(--radius);padding:.6rem 1rem;margin:.6rem 0;background:#fff}
+#list-items label{display:block;margin:.8rem 0}
+#list-items label small{display:block;margin:.15rem 0 .3rem}
+#list-items input:not([type=file]),#list-items textarea,#list-items select{display:block;max-width:40rem}
+.list-photo{display:block;max-width:220px;height:auto;margin:.4rem 0;border-radius:6px}
+.list-photo-field,.list-gallery-item{border-left:3px solid var(--blue-soft);padding-left:.8rem;margin:.8rem 0}
 .item-controls,.list-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin:.6rem 0}
+
+/* Staff access */
+.roles{margin:0 0 1rem;padding-left:1.2rem;color:var(--muted)}
+.roles li{margin:.25rem 0}
+.staff-row{border:1px solid var(--line);border-radius:var(--radius);padding:.75rem 1rem;margin:.6rem 0}
+.staff-row form{display:flex;flex-wrap:wrap;gap:.75rem;align-items:end}
+.staff-row form label{margin:.5rem 0 0;flex:1 1 14rem}
+
+@media (max-width:600px){
+  body>header .portal-logo{height:36px}
+  body>header .portal-home span{display:none}
+  dl{grid-template-columns:1fr;gap:0}
+  dd{margin-bottom:.6rem}
+  main>nav button{flex:1 1 auto;padding:.6rem .5rem}
+}
+.button-link{display:inline-block;padding:.55rem 1rem;border:1px solid var(--blue-ink);border-radius:6px;font-weight:600;text-decoration:none}

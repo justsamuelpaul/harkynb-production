@@ -14,5 +14,5 @@ const settings=JSON.parse(await readFile(new URL('settings.json',base),'utf8'));
 assert.ok(settings.contacts.production);assert.ok(html.length>=25,'Expected full set of brand and course pages');
 const home=await readFile(new URL('index.html',base),'utf8');for(const path of ['onevoicefm','harkynbshotit','academy','summit'])assert.ok(home.includes(`/brands/${path}/`));
 const radio=await readFile(new URL('brands/onevoicefm/index.html',base),'utf8');if(!radio.includes('data-radio'))assert.ok(radio.includes('Live stream not connected'));
-const form=await readFile(new URL('contact/index.html',base),'utf8');for(const name of ['name','email','team','service','message','date','location','budget','method'])assert.ok(form.includes(`name="${name}"`));
+const form=await readFile(new URL('contact/index.html',base),'utf8');for(const name of ['name','email','team','service','shoot','interest','as','programmes','guardian','type','partnership','message','date','location','budget','method'])assert.ok(form.includes(`name="${name}"`));
 console.log(`PASS: ${html.length} pages, ${links} local links/assets, headings, metadata, brand routes, radio status, and form fields.`);

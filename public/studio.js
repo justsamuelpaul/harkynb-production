@@ -119,13 +119,21 @@ function addEntry(row) {
   const status=el('select',{},...['New','In progress','Resolved'].map(s=>new Option(s,s)));
   const owner=el('select',{},new Option('Unassigned',''),...staff.map(s=>new Option(s.id===me?s.name+' (me)':s.name,s.id)));
   if (row.assignee && !staff.some(s=>s.id===row.assignee)) owner.add(new Option(row.assigneeName+' (no inbox access)',row.assignee));
+  const e=row.entry;
   const title=()=>{
     status.value=row.status; owner.value=row.assignee||'';
-    summary.textContent=[row.status,row.entry.name,teamNames[row.entry.team]||row.entry.team,row.assigneeName?'Assigned to '+row.assigneeName:'Unassigned',new Date(row.created).toLocaleDateString()].join(' · ');
+    summary.replaceChildren(el('span',{className:'status-tag '+row.status.toLowerCase().replace(/\s/g,'-'),textContent:row.status}),
+      [e.name,teamNames[e.team]||e.team,e.topic||e.service,row.assigneeName?'Assigned to '+row.assigneeName:'Unassigned',new Date(row.created).toLocaleDateString()].filter(Boolean).join(' · '));
   };
-  for (const [key,value] of Object.entries({...row.entry,team:teamNames[row.entry.team]||row.entry.team,received:new Date(row.created).toLocaleString()})) {
-    if (value) dl.append(el('dt',{textContent:key[0].toUpperCase()+key.slice(1)}),el('dd',{textContent:value}));
-  }
+  // Newer enquiries carry labelled answers from the team's own form; older ones are plain fields.
+  const rows=[['Brand',teamNames[e.team]||e.team],['Name',e.name],['Email',e.email],['Phone',e.phone],
+    ...(e.details||Object.entries(e).filter(([k])=>!['team','name','email','phone','message','method','topic','details'].includes(k)).map(([k,v])=>[k[0].toUpperCase()+k.slice(1),v])),
+    ['Message',e.message],['Preferred contact',e.method],['Received',new Date(row.created).toLocaleString()]];
+  for (const [label,value] of rows) if (value) dl.append(el('dt',{textContent:label}),el('dd',{textContent:value}));
+  const digits=(e.phone||'').replace(/[^\d+]/g,''), wa=digits.replace(/^\+/,'').replace(/^0/,'234');
+  const links=el('div',{className:'reply-links'},
+    ...(e.email?[el('a',{className:'button-link',href:'mailto:'+e.email+'?subject='+encodeURIComponent('Your enquiry to '+(teamNames[e.team]||'HarkynB')),textContent:'Reply by email'})]:[]),
+    ...(digits.length>=7?[el('a',{className:'button-link',href:'tel:'+digits,textContent:'Call'}),el('a',{className:'button-link',href:'https://wa.me/'+wa,target:'_blank',rel:'noopener',textContent:'WhatsApp'})]:[]));
   const change=async data=>{
     status.disabled=owner.disabled=true;
     try {Object.assign(row,await api('/admin/enquiries',{id:row.id,...data})); say('Enquiry updated.');}
@@ -135,7 +143,7 @@ function addEntry(row) {
   status.onchange=run(()=>change({status:status.value}));
   owner.onchange=run(()=>change({assignee:owner.value}));
   title();
-  $('entries').append(el('details',{},summary,dl,el('div',{className:'enquiry-actions'},el('label',{},'Status ',status),el('label',{},'Assigned to ',owner))));
+  $('entries').append(el('details',{},summary,dl,links,el('div',{className:'enquiry-actions'},el('label',{},'Status ',status),el('label',{},'Assigned to ',owner))));
 }
 let inboxLoad=0;
 async function loadInbox(more=false) {

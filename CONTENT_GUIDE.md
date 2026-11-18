@@ -77,3 +77,15 @@ Add these to `projects`. Allowed categories: Weddings, Corporate, Conferences, P
 Course direction and curriculum live in `content/catalogue.mjs`. The six detail pages deliberately show dates, fees, delivery, trainers, duration, and certification as unannounced. Update the page template and verified course data together when actual cohorts are confirmed. The current form collects interest drafts, not paid registrations.
 
 After changes: run `npm run build` then `npm test`. Commit changes to the connected branch to trigger Cloudflare's configured Git deployment.
+
+## Enquiry forms
+
+Each team has its own contact form, defined in `shared/forms.mjs`. The contact page, the server check and the staff inbox all read that one file, so edit questions there only.
+
+- **HarkynB Production**: service needed, date, location, budget.
+- **Onevoicefm**: company, advertising or partnership interest, timing, budget.
+- **HarkynBShotIt**: type of shoot, date, venue, guests, budget.
+- **Creators Academy**: asks who is enquiring first. Students and parents give age group, city, programmes of interest (from the Academy course list), experience, occupation, learning format, schedule, equipment and how they heard about the Academy; students under 18 must add a parent or guardian contact. Schools give organisation, learner numbers, ages, programmes and timing. Sponsors choose how they would like to help.
+- **Future Creators Summit**: general enquiries and partnership or sponsorship only. Partners give their organisation and partnership areas.
+
+Links such as `/contact/?team=academy&service=Photography` open the right form with answers already chosen; the `aliases` in each form map link wording to answers.
