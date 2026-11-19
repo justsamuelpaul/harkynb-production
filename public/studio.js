@@ -132,7 +132,12 @@ function addEntry(row) {
   for (const [label,value] of rows) if (value) dl.append(el('dt',{textContent:label}),el('dd',{textContent:value}));
   const digits=(e.phone||'').replace(/[^\d+]/g,''), wa=digits.replace(/^\+/,'').replace(/^0/,'234');
   const links=el('div',{className:'reply-links'},
-    ...(e.email?[el('a',{className:'button-link',href:'mailto:'+e.email+'?subject='+encodeURIComponent('Your enquiry to '+(teamNames[e.team]||'HarkynB')),textContent:'Reply by email'})]:[]),
+    // mailto: only works when an email app is installed, so a copy button and Gmail compose are offered too.
+    ...(e.email?(()=>{const su=encodeURIComponent('Your enquiry to '+(teamNames[e.team]||'HarkynB'));
+      const copy=el('button',{type:'button',className:'button-link',textContent:'Copy email address'});
+      copy.onclick=run(async()=>{await navigator.clipboard.writeText(e.email);copy.textContent='Copied ✓';say('Copied '+e.email+'. Paste it into Zoho Mail to reply.');setTimeout(()=>copy.textContent='Copy email address',2500);});
+      return [copy,el('a',{className:'button-link',href:'https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(e.email)+'&su='+su,target:'_blank',rel:'noopener',textContent:'Reply in Gmail'}),
+        el('a',{className:'button-link',href:'mailto:'+e.email+'?subject='+su,textContent:'Open email app'})];})():[]),
     ...(digits.length>=7?[el('a',{className:'button-link',href:'tel:'+digits,textContent:'Call'}),el('a',{className:'button-link',href:'https://wa.me/'+wa,target:'_blank',rel:'noopener',textContent:'WhatsApp'})]:[]));
   const change=async data=>{
     status.disabled=owner.disabled=true;
