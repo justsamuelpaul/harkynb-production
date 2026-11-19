@@ -21,7 +21,9 @@ const pages=JSON.parse(await readFile(new URL('../dist/editor-pages.json',import
 const env={STUDIO:{get:()=>studio,idFromName:s=>s},ASSETS:{fetch:()=>Response.json(pages)}};
 const origin='https://example.test';
 const call=(path,account,data)=>worker.fetch(new Request(origin+path,{method:data?'POST':'GET',headers:{origin,'Content-Type':'application/json'},body:data?JSON.stringify(data):undefined}),env);
-assert.match((await call('/staff/setup/?token=obsolete')).headers.get('Location'),/workers\.dev\/signup#$/);
+assert.match((await call('/staff/setup/?token=obsolete')).headers.get('Location'),/^https:\/\/admin\.hbproduction\.co\/signup#$/);
+const www=await worker.fetch(new Request('https://www.hbproduction.co/about/?a=1'),env);
+assert.equal(www.status,301);assert.equal(www.headers.get('Location'),'https://hbproduction.co/about/?a=1');
 assert.equal((await call('/admin/enquiries')).status,410);
 const data={requestId:crypto.randomUUID(),team:'shotit',name:'Test visitor',email:'test@example.com',shoot:'Weddings',message:'A test booking request',phone:'0800 000 0000',location:'Lagos',date:'2026-12-05',budget:'',method:'Email'};
 // Each team's form has its own required questions, follow-ups and allowed answers.

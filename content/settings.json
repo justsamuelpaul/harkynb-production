@@ -1,29 +1,29 @@
 {
   "reviewMode": true,
-  "siteUrl": "",
+  "siteUrl": "https://hbproduction.co",
   "logo": "/brand/harkynb-production.png",
   "logoOnDark": "/brand/harkynb-production-light.png",
   "heroVideo": "",
   "contacts": {
     "production": {
-      "email": "",
-      "whatsapp": ""
+      "email": "hello@hbproduction.co",
+      "whatsapp": "+2348071630101"
     },
     "onevoicefm": {
-      "email": "",
-      "whatsapp": ""
+      "email": "hello@hbproduction.co",
+      "whatsapp": "+2348071630101"
     },
     "shotit": {
-      "email": "",
-      "whatsapp": ""
+      "email": "hello@hbproduction.co",
+      "whatsapp": "+2348071630101"
     },
     "academy": {
-      "email": "",
-      "whatsapp": ""
+      "email": "hello@hbproduction.co",
+      "whatsapp": "+2348071630101"
     },
     "summit": {
-      "email": "",
-      "whatsapp": ""
+      "email": "hello@hbproduction.co",
+      "whatsapp": "+2348071630101"
     }
   },
   "socials": [],

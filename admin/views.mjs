@@ -1,5 +1,5 @@
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export const site='https://harkynb-production.justsamuelpaul.workers.dev';
+export const site='https://hbproduction.co';
 // Shared top-of-page markup for every portal page, including the console (studio-view.mjs).
 export const portalHead=title=>`<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title} | HarkynB Production</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/studio.css">`;
 export const portalHome='<a class="portal-home" href="/admin/"><img class="portal-logo" src="/brand/harkynb-production.png" alt="HarkynB Production" width="228" height="144"><span>Staff portal</span></a>';

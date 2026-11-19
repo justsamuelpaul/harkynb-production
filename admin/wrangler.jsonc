@@ -3,6 +3,9 @@
   "main": "index.mjs",
   "compatibility_date": "2026-11-17",
   "workers_dev": true,
+  "routes": [
+    {"pattern": "admin.hbproduction.co", "custom_domain": true}
+  ],
   "services": [
     {
       "binding": "SITE",

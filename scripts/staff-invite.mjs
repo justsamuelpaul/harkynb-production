@@ -8,4 +8,4 @@ const expires=new Date(Date.now()+86400000).toISOString();
 console.log('Private Cloudflare STAFF_INVITES entry (merge with existing entries):');
 console.log(JSON.stringify({[name]:{role,token,expires}},null,2));
 console.log('Private link for this person only:');
-console.log('https://harkynb-production.justsamuelpaul.workers.dev/staff/setup/#'+new URLSearchParams({name,token}));
+console.log('https://hbproduction.co/staff/setup/#'+new URLSearchParams({name,token}));

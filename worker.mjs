@@ -22,7 +22,9 @@ async function readJson(request,max) {
 export default {async fetch(request,env) {
   const url = new URL(request.url), path = url.pathname;
   const store = env.STUDIO.get(env.STUDIO.idFromName('production'));
-  const portal = 'https://harkynb-admin.justsamuelpaul.workers.dev';
+  const portal = 'https://admin.hbproduction.co';
+  // One address for the public site: www goes to the bare domain.
+  if (url.hostname==='www.hbproduction.co') return Response.redirect('https://hbproduction.co'+path+url.search,301);
   if (['GET','HEAD'].includes(request.method)) {
     const destination = new Map([
       ['/admin','/admin/'], ['/admin/','/admin/'], ['/team','/team'],

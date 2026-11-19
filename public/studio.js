@@ -31,7 +31,7 @@ async function loadPage() {
   for(const [key,p] of Object.entries(def.photos)) options.push(new Option('Photo · '+p.label,key));
   for(const [key,p] of Object.entries(def.fields)) options.push(new Option(p.tag.toUpperCase()+' · '+p.value.slice(0,90),key));
   $('field').replaceChildren(...options); $('field').disabled=false; $('edit-form').hidden=false;
-  $('public-page').href=new URL(path,'https://harkynb-production.justsamuelpaul.workers.dev').href; displayField(); renderOrphans();
+  $('public-page').href=new URL(path,'https://hbproduction.co').href; displayField(); renderOrphans();
 }
 const el=(tag,props={},...kids)=>{const e=Object.assign(document.createElement(tag),props);e.append(...kids);return e;};
 // Field keys are derived from a page's built-in wording. When that wording changes in code,
