@@ -26,7 +26,12 @@
       "whatsapp": "+2348071630101"
     }
   },
-  "socials": [],
+  "socials": [
+    {
+      "label": "Instagram",
+      "url": "https://www.instagram.com/harkynbproduction/"
+    }
+  ],
   "radio": {
     "streamUrl": "",
     "nowPlaying": "",
