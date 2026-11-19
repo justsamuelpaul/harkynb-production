@@ -1,5 +1,5 @@
 import {consoleHtml} from '../studio-view.mjs';
-import {entrance,pending,team,site,logout} from './views.mjs';
+import {entrance,pending,team,site} from './views.mjs';
 import {hash} from './accounts.mjs';
 import {collectionNames,projectCategories} from '../shared/collections.mjs';
 import {teams} from '../shared/render.mjs';
@@ -66,12 +66,12 @@ export default {async fetch(request,env){
   if(role==='pending')return method==='GET' && ['/admin','/admin/','/team'].includes(path)?html(pending(user)):fail('Staff approval required.',403);
   if(path==='/team' && method==='GET' && role!=='manager')return redirect('/admin/');
   if(path==='/team' && role==='manager'){
-    if(method==='GET')return html(team(await accounts.list(),env.OWNER_ACCOUNT_ID));
+    if(method==='GET')return html(team(await accounts.list(),env.OWNER_ACCOUNT_ID,user));
     const f=await fields(request),id=f?.get('id'),r=f?.get('role');
     if(!uuid.test(id)||id===user.id||id===env.OWNER_ACCOUNT_ID||!['editor','inbox','manager','pending'].includes(r))return fail('Invalid role change.');
     await accounts.change(id,r);return redirect('/team');
   }
-  if(method==='GET' && ['/admin','/admin/'].includes(path))return html(consoleHtml(role).replace('href="/">View website','href="'+site+'">View website').replace('</header>',(role==='manager'?'<a href="/team">Staff access</a>':'')+logout+'</header>'));
+  if(method==='GET' && ['/admin','/admin/'].includes(path))return html(consoleHtml(role,user.name));
   if(role!=='inbox' && method==='GET' && (path==='/editor-pages.json'||/^\/media\/(?:[0-9a-f-]{36}|[a-z0-9][a-z0-9-]*\.(?:jpg|jpeg|png|webp))$/.test(path)||path.startsWith('/art/')))return env.SITE.fetch(new URL(path,site));
   const store=env.STUDIO.get(env.STUDIO.idFromName('production'));
     // Every approved account sees alert counts (no personal details). Only inbox staff and managers read enquiries.

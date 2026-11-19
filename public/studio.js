@@ -1,5 +1,9 @@
 const $ = id => document.getElementById(id);
-const say = text => { $('notice').textContent=text; };
+// Messages appear as a small banner at the bottom of the screen and fade after a while.
+let sayTimer;
+const say = text => { $('notice').textContent=text; clearTimeout(sayTimer); if (text) sayTimer=setTimeout(()=>{$('notice').textContent='';},12000); };
+const tagNames={h1:'Main heading',h2:'Heading',h3:'Small heading',p:'Paragraph'};
+const fieldLabel=f=>(tagNames[f.tag]||f.tag.toUpperCase())+' · '+f.value.slice(0,90);
 async function api(url,data) {
   const options=data ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)} : {};
   const response=await fetch(url,options);
@@ -29,7 +33,7 @@ async function loadPage() {
   current=state;
   const def=pages[path], options=[];
   for(const [key,p] of Object.entries(def.photos)) options.push(new Option('Photo · '+p.label,key));
-  for(const [key,p] of Object.entries(def.fields)) options.push(new Option(p.tag.toUpperCase()+' · '+p.value.slice(0,90),key));
+  for(const [key,p] of Object.entries(def.fields)) options.push(new Option(fieldLabel(p),key));
   $('field').replaceChildren(...options); $('field').disabled=false; $('edit-form').hidden=false;
   $('public-page').href=new URL(path,'https://hbproduction.co').href; displayField(); renderOrphans();
 }
@@ -51,7 +55,7 @@ function renderOrphans() {
   $('orphans').hidden=!items.length;
   $('orphans').replaceChildren(...(items.length?[el('h3',{textContent:'Edits to reconnect on this page'})]:[]),...items.map(({k,kind})=>{
     const targets=kind==='text'
-      ? Object.entries(def.fields).map(([key,f])=>new Option(f.tag.toUpperCase()+' · '+f.value.slice(0,90),key))
+      ? Object.entries(def.fields).map(([key,f])=>new Option(fieldLabel(f),key))
       : Object.entries(def.photos).map(([key,p])=>new Option('Photo · '+p.label,key));
     const pick=el('select',{},new Option('Choose where this belongs…',''),...targets);
     const buttons=[];
@@ -113,42 +117,84 @@ if ($('editor')) {
   run(async()=>{pages=await api('/editor-pages.json');for(const [path,def] of Object.entries(pages)) $('page').add(new Option(def.title+' · '+path,path));await loadPage();await loadAttention();})();
 }
 const teamNames={production:'HarkynB Production',onevoicefm:'Onevoicefm',shotit:'HarkynBShotIt',academy:'Creators Academy',summit:'Future Creators Summit'};
-let staff=[], me='';
+let staff=[], me='', shownRows=[], openRow=null;
+const wide=()=>matchMedia('(min-width: 1000px)').matches;
+const statusPill=s=>el('span',{className:'pill status-'+s.toLowerCase().replace(/\s/g,'-'),textContent:s});
+const brandChip=t=>el('span',{className:'chip brand-'+(teamNames[t]?t:'other'),textContent:teamNames[t]||t||'Website'});
+const shortDate=d=>{const t=new Date(d), now=new Date();
+  return t.toDateString()===now.toDateString()?t.toLocaleTimeString('en-GB',{hour:'numeric',minute:'2-digit'}):t.toLocaleDateString('en-GB',{day:'numeric',month:'short',...(t.getFullYear()!==now.getFullYear()?{year:'numeric'}:{})});};
+const longDate=d=>new Date(d).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit'});
+// One line in the enquiry list. New enquiries are bold with a dot so they stand out.
+function paintRow(row) {
+  const e=row.entry, item=row._item;
+  item.classList.toggle('is-new',row.status==='New');
+  item.replaceChildren(
+    el('span',{className:'enq-top'},el('span',{className:'enq-name',textContent:e.name||'No name given'}),el('time',{className:'enq-date',dateTime:new Date(row.created).toISOString(),textContent:shortDate(row.created)})),
+    el('span',{className:'enq-topic'},...(e.topic||e.service?[el('strong',{textContent:e.topic||e.service})]:[]),el('span',{className:'enq-snippet',textContent:e.message||''})),
+    el('span',{className:'enq-meta'},brandChip(e.team),statusPill(row.status),el('span',{className:'enq-owner',textContent:row.assigneeName?'Assigned to '+row.assigneeName:'Unassigned'})));
+}
 function addEntry(row) {
-  const summary=el('summary'), dl=el('dl');
+  row._item=el('button',{type:'button',className:'enq',onclick:()=>openEntry(row,true)});
+  row._item.setAttribute('aria-controls','detail');
+  paintRow(row); shownRows.push(row);
+  $('entries').append(el('div',{className:'enq-item',role:'listitem'},row._item));
+}
+function hideDetail() {$('inbox-layout').classList.remove('detail-open'); document.body.classList.remove('detail-locked');}
+function closeEntry() {hideDetail(); openRow?._item.focus();}
+// The full enquiry: a side panel on wide screens, the whole screen on phones.
+function openEntry(row,focus) {
+  openRow=row;
+  for (const r of shownRows) r._item.setAttribute('aria-current',String(r===row));
+  const e=row.entry;
   const status=el('select',{},...['New','In progress','Resolved'].map(s=>new Option(s,s)));
   const owner=el('select',{},new Option('Unassigned',''),...staff.map(s=>new Option(s.id===me?s.name+' (me)':s.name,s.id)));
   if (row.assignee && !staff.some(s=>s.id===row.assignee)) owner.add(new Option(row.assigneeName+' (no inbox access)',row.assignee));
-  const e=row.entry;
-  const title=()=>{
-    status.value=row.status; owner.value=row.assignee||'';
-    summary.replaceChildren(el('span',{className:'status-tag '+row.status.toLowerCase().replace(/\s/g,'-'),textContent:row.status}),
-      [e.name,teamNames[e.team]||e.team,e.topic||e.service,row.assigneeName?'Assigned to '+row.assigneeName:'Unassigned',new Date(row.created).toLocaleDateString()].filter(Boolean).join(' · '));
-  };
-  // Newer enquiries carry labelled answers from the team's own form; older ones are plain fields.
-  const rows=[['Brand',teamNames[e.team]||e.team],['Name',e.name],['Email',e.email],['Phone',e.phone],
-    ...(e.details||Object.entries(e).filter(([k])=>!['team','name','email','phone','message','method','topic','details'].includes(k)).map(([k,v])=>[k[0].toUpperCase()+k.slice(1),v])),
-    ['Message',e.message],['Preferred contact',e.method],['Received',new Date(row.created).toLocaleString()],['Emails',row.emailNote]];
-  for (const [label,value] of rows) if (value) dl.append(el('dt',{textContent:label}),el('dd',{textContent:value}));
-  const digits=(e.phone||'').replace(/[^\d+]/g,''), wa=digits.replace(/^\+/,'').replace(/^0/,'234');
-  const links=el('div',{className:'reply-links'},
-    // mailto: only works when an email app is installed, so a copy button and Gmail compose are offered too.
-    ...(e.email?(()=>{const su=encodeURIComponent('Your enquiry to '+(teamNames[e.team]||'HarkynB'));
-      const copy=el('button',{type:'button',className:'button-link',textContent:'Copy email address'});
-      copy.onclick=run(async()=>{await navigator.clipboard.writeText(e.email);copy.textContent='Copied ✓';say('Copied '+e.email+'. Paste it into Zoho Mail to reply.');setTimeout(()=>copy.textContent='Copy email address',2500);});
-      return [copy,el('a',{className:'button-link',href:'https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(e.email)+'&su='+su,target:'_blank',rel:'noopener',textContent:'Reply in Gmail'}),
-        el('a',{className:'button-link',href:'mailto:'+e.email+'?subject='+su,textContent:'Open email app'})];})():[]),
-    ...(digits.length>=7?[el('a',{className:'button-link',href:'tel:'+digits,textContent:'Call'}),el('a',{className:'button-link',href:'https://wa.me/'+wa,target:'_blank',rel:'noopener',textContent:'WhatsApp'})]:[]));
+  const meta=el('p',{className:'detail-meta'});
+  const paint=()=>{status.value=row.status; owner.value=row.assignee||''; meta.replaceChildren(brandChip(e.team),statusPill(row.status),el('span',{className:'detail-date',textContent:'Received '+longDate(row.created)})); paintRow(row);};
   const change=async data=>{
     status.disabled=owner.disabled=true;
     try {Object.assign(row,await api('/admin/enquiries',{id:row.id,...data})); say('Enquiry updated.');}
-    finally {status.disabled=owner.disabled=false; title();}
+    finally {status.disabled=owner.disabled=false; paint();}
     refreshAlerts();
   };
   status.onchange=run(()=>change({status:status.value}));
   owner.onchange=run(()=>change({assignee:owner.value}));
-  title();
-  $('entries').append(el('details',{},summary,dl,links,el('div',{className:'enquiry-actions'},el('label',{},'Status ',status),el('label',{},'Assigned to ',owner))));
+  const list=(pairs,cls='answers')=>{const dl=el('dl',{className:cls});for (const [label,value] of pairs) if (value) dl.append(el('dt',{textContent:label}),el('dd',{textContent:value}));return dl.children.length?dl:null;};
+  const card=(title,...kids)=>el('div',{className:'detail-card'},el('h3',{textContent:title}),...kids);
+  // Reply buttons. mailto: only works when an email app is installed, so a copy button and Gmail compose are offered too.
+  const digits=(e.phone||'').replace(/[^\d+]/g,''), wa=digits.replace(/^\+/,'').replace(/^0/,'234');
+  const links=el('div',{className:'reply-links'},
+    ...(e.email?(()=>{const su=encodeURIComponent('Your enquiry to '+(teamNames[e.team]||'HarkynB'));
+      const copy=el('button',{type:'button',className:'button-link',textContent:'Copy email address'});
+      copy.onclick=run(async()=>{await navigator.clipboard.writeText(e.email);copy.textContent='Copied ✓';say('Copied '+e.email+'. Paste it into Zoho Mail to reply.');setTimeout(()=>copy.textContent='Copy email address',2500);});
+      return [el('a',{className:'button-link primary',href:'https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(e.email)+'&su='+su,target:'_blank',rel:'noopener',textContent:'Reply in Gmail'}),copy,
+        el('a',{className:'button-link',href:'mailto:'+e.email+'?subject='+su,textContent:'Open email app'})];})():[]),
+    ...(digits.length>=7?[el('a',{className:'button-link',href:'https://wa.me/'+wa,target:'_blank',rel:'noopener',textContent:'WhatsApp'}),el('a',{className:'button-link',href:'tel:'+digits,textContent:'Call'})]:[]));
+  // Newer enquiries carry labelled answers from the team's own form; older ones are plain fields.
+  const answers=e.details||Object.entries(e).filter(([k])=>!['team','name','email','phone','message','method','topic','details'].includes(k)).map(([k,v])=>[k[0].toUpperCase()+k.slice(1),v]);
+  const answerList=list(answers);
+  const emailWarn=/not sent|no RESEND|error/i.test(row.emailNote||'');
+  const back=el('button',{type:'button',className:'detail-back ghost small',textContent:'← Back to enquiries',onclick:closeEntry});
+  const title=el('h2',{id:'detail-title',tabIndex:-1,textContent:e.name||'No name given'});
+  const contact=list([['Email',e.email],['Phone',e.phone],['Prefers',e.method]],'answers compact');
+  paint();
+  $('detail').replaceChildren(
+    el('div',{className:'detail-head'},back,title,meta,...(e.topic||e.service?[el('p',{className:'detail-topic',textContent:e.topic||e.service})]:[])),
+    card('Reply',...(contact?[contact]:[]),links.children.length?links:el('p',{className:'hint',textContent:'No email address or phone number was given.'})),
+    el('div',{className:'detail-card enquiry-actions'},el('label',{},'Status',status),el('label',{},'Assigned to',owner)),
+    ...(e.message?[card('Message',el('p',{className:'message',textContent:e.message}))]:[]),
+    ...(answerList?[card('Form answers',answerList)]:[]),
+    ...(row.emailNote?[el('p',{className:'email-note'+(emailWarn?' warn':'')},el('strong',{textContent:'Emails: '}),row.emailNote)]:[]));
+  $('detail').setAttribute('aria-labelledby','detail-title');
+  $('detail').scrollTop=0;
+  if (!wide()) {$('inbox-layout').classList.add('detail-open'); document.body.classList.add('detail-locked');}
+  if (focus) title.focus({preventScroll:wide()});
+}
+const emptyDetail=()=>{$('detail').removeAttribute('aria-labelledby');$('detail').replaceChildren(el('div',{className:'detail-empty'},el('p',{},el('strong',{textContent:'No enquiry selected'})),el('p',{textContent:'Choose an enquiry from the list to read it and reply.'})));};
+// Quick views set the Status and Assigned filters together.
+const quick={open:['open',''],me:['open','me'],none:['open','none'],all:['','']};
+function markQuick() {
+  for (const b of document.querySelectorAll('[data-quick]')) {const [s,a]=quick[b.dataset.quick];b.setAttribute('aria-pressed',String($('f-status').value===s&&$('f-assigned').value===a));}
 }
 let inboxLoad=0;
 async function loadInbox(more=false) {
@@ -156,20 +202,35 @@ async function loadInbox(more=false) {
   if (!staff.length) ({staff,me}=await api('/admin/staff'));
   const q=new URLSearchParams({team:$('f-team').value,status:$('f-status').value,assigned:$('f-assigned').value});
   if (more) q.set('before',cursor);
+  markQuick();
   const rows=await api('/admin/enquiries?'+q);
   if (ticket!==inboxLoad) return;
-  if (!more) $('entries').replaceChildren();
+  const keep=openRow?.id;
+  if (!more) {$('entries').replaceChildren(); shownRows=[]; openRow=null;}
   rows.forEach(addEntry);
-  if (!more && !rows.length) $('entries').textContent='No enquiries match these filters.';
+  $('entries').setAttribute('role',shownRows.length?'list':'presentation');
+  if (!more && !rows.length) {
+    const defaults=!$('f-team').value&&$('f-status').value==='open'&&!$('f-assigned').value;
+    $('entries').replaceChildren(el('div',{className:'empty'},el('p',{className:'empty-title',textContent:defaults?'You are all caught up':'No enquiries here'}),
+      el('p',{textContent:defaults?'There are no open enquiries. New messages from the website will appear here.':'Nothing matches these filters. Try “Everything” or choose another brand.'})));
+  }
   cursor=rows.at(-1)?.cursor; $('older').hidden=rows.length<30;
-  if (!more) showAlerts(await api('/admin/alerts/seen',{}));
+  $('result-count').textContent=shownRows.length?(shownRows.length===1?'1 enquiry':shownRows.length+' enquiries')+($('older').hidden?'':' shown. Older ones are further down.'):'';
+  if (!more) {
+    const again=shownRows.find(r=>r.id===keep);
+    if (again && (wide()||$('inbox-layout').classList.contains('detail-open'))) openEntry(again,false);
+    else if (shownRows.length && wide()) openEntry(shownRows[0],false);
+    else {hideDetail(); emptyDetail();}
+    showAlerts(await api('/admin/alerts/seen',{}));
+  }
 }
 
 // Dashboard alerts: every approved staff member sees counts; polling runs while the console is open.
 let lastUnseen=null;
 const desktopReady=()=>'Notification' in window && Notification.permission==='granted';
 function showAlerts(a) {
-  if ($('badge')) {$('badge').hidden=!a.unseen; $('badge').textContent=a.unseen;}
+  if ($('badge')) {$('badge').hidden=!a.unseen; $('badge').textContent=a.unseen; $('badge').title=a.unseen+' new';}
+  if ($('count-open')) {$('count-open').textContent=a.open; $('count-mine').textContent=a.mine;}
   document.title=(a.unseen?'('+a.unseen+') ':'')+'Staff console | HarkynB Production';
   const parts=[];
   if (a.unseen) parts.push(a.unseen+(a.unseen===1?' new enquiry':' new enquiries')+' since you last checked');
@@ -255,10 +316,10 @@ const newsFields=n=>[textField(n,'title','Headline'),textField(n,'date','Date',{
 function renderList() {
   const name=$('list-name').value;
   $('list-items').replaceChildren(...draft.map((item,i)=>{
-    const summary=el('summary',{textContent:(i+1)+'. '+(item.title||'Untitled')+(item.category?' · '+item.category:'')+(item.date?' · '+item.date:'')});
+    const summary=el('summary',{},el('span',{className:'item-num',textContent:i+1}),el('span',{className:'item-title',textContent:item.title||'Untitled'}),...(item.category||item.date?[el('span',{className:'item-meta',textContent:item.category||item.date})]:[]));
     return el('details',{open:!item.title},summary,...(name==='news'?newsFields(item):projectFields(item)),moveButtons(draft,i,renderList,name==='news'?'update':'project'));
   }));
-  if (!draft.length) $('list-items').textContent=name==='news'?'No news updates yet.':'No projects yet.';
+  if (!draft.length) $('list-items').replaceChildren(el('div',{className:'empty'},el('p',{className:'empty-title',textContent:name==='news'?'No news updates yet':'No projects yet'}),el('p',{textContent:'Use the Add button below to create the first one.'})));
   $('list-status').textContent=listState.published?'This list is managed here. Changes appear on the website when you publish.':'Showing the content built with the website. Once you publish, this list is managed here.';
   $('list-restore').disabled=!listState.canRestore;
   $('list-add').textContent=name==='news'?'Add news update':'Add project';
@@ -289,10 +350,14 @@ if ($('lists')) {
   addEventListener('beforeunload',e=>{if(listDirty)e.preventDefault();});
 }
 const tabs=[...document.querySelectorAll('[data-tab]')];
-tabs.forEach(tab=>tab.onclick=run(async()=>{for(const t of tabs){const active=t===tab;t.setAttribute('aria-pressed',active);$(t.dataset.tab).hidden=!active;}say('');if(tab.dataset.tab==='inbox')await loadInbox();if(tab.dataset.tab==='lists'&&!listState)await loadList();}));
+tabs.forEach(tab=>tab.onclick=run(async()=>{for(const t of tabs){const active=t===tab;if(active)t.setAttribute('aria-current','page');else t.removeAttribute('aria-current');$(t.dataset.tab).hidden=!active;}say('');history.replaceState(null,'','#'+tab.dataset.tab);if(tab.dataset.tab==='inbox')await loadInbox();if(tab.dataset.tab==='lists'&&!listState)await loadList();}));
 if ($('inbox')) {
   $('refresh').onclick=run(()=>loadInbox()); $('older').onclick=run(()=>loadInbox(true));
   for (const id of ['f-team','f-status','f-assigned']) $(id).onchange=run(()=>loadInbox());
+  for (const b of document.querySelectorAll('[data-quick]')) b.onclick=run(()=>{[$('f-status').value,$('f-assigned').value]=quick[b.dataset.quick];return loadInbox();});
+  $('detail').addEventListener('keydown',e=>{if(e.key==='Escape'&&$('inbox-layout').classList.contains('detail-open'))closeEntry();});
+  matchMedia('(min-width: 1000px)').addEventListener('change',m=>{if(m.matches)hideDetail();});
 }
-tabs[0].click();
+(tabs.find(t=>'#'+t.dataset.tab===location.hash)||tabs[0]).click();
+addEventListener('hashchange',()=>tabs.find(t=>'#'+t.dataset.tab===location.hash)?.click());
 refreshAlerts();
