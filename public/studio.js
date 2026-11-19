@@ -128,7 +128,7 @@ function addEntry(row) {
   // Newer enquiries carry labelled answers from the team's own form; older ones are plain fields.
   const rows=[['Brand',teamNames[e.team]||e.team],['Name',e.name],['Email',e.email],['Phone',e.phone],
     ...(e.details||Object.entries(e).filter(([k])=>!['team','name','email','phone','message','method','topic','details'].includes(k)).map(([k,v])=>[k[0].toUpperCase()+k.slice(1),v])),
-    ['Message',e.message],['Preferred contact',e.method],['Received',new Date(row.created).toLocaleString()]];
+    ['Message',e.message],['Preferred contact',e.method],['Received',new Date(row.created).toLocaleString()],['Emails',row.emailNote]];
   for (const [label,value] of rows) if (value) dl.append(el('dt',{textContent:label}),el('dd',{textContent:value}));
   const digits=(e.phone||'').replace(/[^\d+]/g,''), wa=digits.replace(/^\+/,'').replace(/^0/,'234');
   const links=el('div',{className:'reply-links'},

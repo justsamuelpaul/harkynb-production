@@ -1,7 +1,7 @@
 // Enquiry emails through Resend (https://resend.com). Needs the secret RESEND_API_KEY on the
 // harkynb-production Worker, and hbproduction.co verified as a sending domain in Resend.
 // Optional plain variables: MAIL_FROM (sender) and NOTIFY_TO (staff inbox, comma separated).
-// Sending never blocks or fails a submission: errors are logged and the enquiry is already saved.
+// Sending never blocks or fails a submission. The outcome is returned as a short note that staff see on the enquiry.
 const brandNames = {production:'HarkynB Production', onevoicefm:'Onevoicefm', shotit:'HarkynBShotIt', academy:'HarkynB Creators Academy', summit:'Future Creators Summit'};
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const oneLine = (s, max) => String(s ?? '').replace(/[\r\n]+/g, ' ').trim().slice(0, max);
@@ -34,14 +34,22 @@ async function send(env, message) {
     headers: {Authorization: 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json'},
     body: JSON.stringify({from: env.MAIL_FROM || 'HarkynB Production <hello@hbproduction.co>', ...message})
   });
-  if (!response.ok) console.error('Resend', response.status, (await response.text()).slice(0, 300));
+  if (response.ok) return '';
+  let reason = '';
+  try { reason = (await response.json()).message || ''; } catch {}
+  return 'Resend error ' + response.status + (reason ? ': ' + oneLine(reason, 200) : '');
 }
 
+// Returns a note for the staff console, e.g. 'Sent to staff and visitor' or the reason it failed.
 export async function sendEnquiryEmails(env, entry) {
-  if (!env.RESEND_API_KEY) return;
+  if (!env.RESEND_API_KEY) return 'Not sent: the website has no RESEND_API_KEY secret (Cloudflare: harkynb-production > Settings > Variables and Secrets, not Builds).';
   const staff = (env.NOTIFY_TO || 'hello@hbproduction.co').split(',').map(s => s.trim()).filter(Boolean);
-  await Promise.allSettled([
+  const results = await Promise.allSettled([
     send(env, {to: staff, reply_to: entry.email, ...staffEmail(entry)}),
     send(env, {to: [entry.email], reply_to: staff[0], ...visitorEmail(entry)})
-  ]).then(results => results.forEach(r => r.status === 'rejected' && console.error('Resend', r.reason)));
+  ]);
+  const [staffNote, visitorNote] = results.map(r => r.status === 'fulfilled' ? r.value : 'Could not reach Resend: ' + oneLine(r.reason?.message || r.reason, 120));
+  if (!staffNote && !visitorNote) return 'Sent to staff and visitor';
+  console.error('Enquiry email', staffNote, visitorNote);
+  return [staffNote && 'Staff alert not sent. ' + staffNote, visitorNote && 'Visitor confirmation not sent. ' + visitorNote].filter(Boolean).join(' ');
 }
