@@ -39,6 +39,8 @@ async function fields(request){
 }
 export default {async fetch(request,env){
   const url=new URL(request.url),path=url.pathname, method=request.method;
+  // Staff use admin.hbproduction.co; the old workers.dev address forwards there.
+  if(url.hostname.endsWith('.workers.dev') && method==='GET')return Response.redirect('https://admin.hbproduction.co'+path+url.search,301);
   if(!['GET','POST'].includes(method))return fail('Method not allowed.',405);
   if(method==='POST' && request.headers.get('origin')!==url.origin)return fail('Invalid origin.',403);
   if(method==='GET' && (['/studio.css','/studio.js','/favicon.svg'].includes(path)||/^\/brand\/[a-z0-9-]+\.png$/.test(path)))return env.SITE.fetch(new URL(path,site));

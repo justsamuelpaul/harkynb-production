@@ -19,12 +19,13 @@ async function readJson(request,max) {
   return JSON.parse(await new Blob(chunks).text());
 }
 
-export default {async fetch(request,env) {
+export default {async fetch(request,env,ctx) {
   const url = new URL(request.url), path = url.pathname;
   const store = env.STUDIO.get(env.STUDIO.idFromName('production'));
   const portal = 'https://admin.hbproduction.co';
   // One address for the public site: www goes to the bare domain.
-  if (url.hostname==='www.hbproduction.co') return Response.redirect('https://hbproduction.co'+path+url.search,301);
+  // The old workers.dev address also points visitors and search engines at the real domain.
+  if (url.hostname==='www.hbproduction.co' || (url.hostname.endsWith('.workers.dev') && ['GET','HEAD'].includes(request.method))) return Response.redirect('https://hbproduction.co'+path+url.search,301);
   if (['GET','HEAD'].includes(request.method)) {
     const destination = new Map([
       ['/admin','/admin/'], ['/admin/','/admin/'], ['/team','/team'],
@@ -43,7 +44,17 @@ export default {async fetch(request,env) {
     const ip = request.headers.get('CF-Connecting-IP') || 'local';
     const bucket = Array.from(new Uint8Array(await digest(ip+'|'+Math.floor(Date.now()/600000)))).join('.');
     const saved = await store.submit(d.requestId,entry,bucket);
+    // Staff alert and visitor confirmation by email, only for a new enquiry (not a resubmitted duplicate).
+    if (saved==='new') ctx?.waitUntil(sendEnquiryEmails(env,entry).catch(e=>console.error('Enquiry email',e)));
     return saved ? json({saved:true},201) : fail('Please try again in ten minutes.',429);
+  }
+  // Once staff publish the portfolio, the sitemap lists exactly the published project pages.
+  if (path==='/sitemap.xml' && request.method==='GET') {
+    const res = await env.ASSETS.fetch(request), {projects} = await store.collections();
+    if (!projects || res.status!==200) return res;
+    const day = new Date().toISOString().slice(0,10), project = /<url><loc>[^<]*\/work\/[a-z0-9-]+\/<\/loc>(?:<lastmod>[^<]*<\/lastmod>)?<\/url>/g;
+    const xml = (await res.text()).replace(project,'').replace('</urlset>',projects.map(p=>'<url><loc>https://hbproduction.co/work/'+p.slug+'/</loc><lastmod>'+day+'</lastmod></url>').join('')+'</urlset>');
+    return new Response(xml,{headers:{'Content-Type':'application/xml; charset=utf-8','Cache-Control':'public,max-age=3600'}});
   }
   if (path.startsWith('/media/') && uuid.test(path.slice(7)) && request.method==='GET') {
     const image = await store.photo(path.slice(7));
@@ -64,6 +75,12 @@ export default {async fetch(request,env) {
         .on('meta[name="description"]',{element(el){el.setAttribute('content',description);}})
         .on('meta[property="og:title"]',{element(el){el.setAttribute('content',title);}})
         .on('meta[property="og:description"]',{element(el){el.setAttribute('content',description);}})
+        .on('meta[name^="twitter:title"]',{element(el){el.setAttribute('content',title);}})
+        .on('meta[name^="twitter:description"]',{element(el){el.setAttribute('content',description);}})
+        .on('meta[name="robots"]',{element(el){el.remove();}})
+        .on('link[rel="canonical"],meta[property="og:url"]',{element(el){el.setAttribute(el.tagName==='link'?'href':'content','https://hbproduction.co/work/'+p.slug+'/');}})
+        .on('meta[property="og:image"],meta[name="twitter:image"]',{element(el){if(p.image)el.setAttribute('content',new URL(p.image,'https://hbproduction.co').href);}})
+        .on('meta[property="og:image:alt"]',{element(el){if(p.alt)el.setAttribute('content',p.alt);}})
         .on('main#main',{element(el){el.setInnerContent(projectMain(p),{html:true});}})
         .transform(template);
       return new Response(output.body,{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
@@ -103,6 +120,7 @@ import {DurableObject} from 'cloudflare:workers';
 import {views,projectMain} from './shared/render.mjs';
 import {validateCollection} from './shared/collections.mjs';
 import {validateEnquiry} from './shared/forms.mjs';
+import {sendEnquiryEmails} from './shared/email.mjs';
 export class Studio extends DurableObject {
   constructor(ctx,env) {
     super(ctx,env);
@@ -229,7 +247,7 @@ export class Studio extends DurableObject {
       if (count>=12) return false;
       this.sql.exec('INSERT OR REPLACE INTO limits VALUES(?,?,?)',bucket,count+1,Date.now()+600000);
       this.sql.exec('INSERT INTO enquiries VALUES(?,?,?,?)',id,new Date().toISOString(),JSON.stringify(entry),'New');
-      return true;
+      return 'new';
     });
   }
   // filter: {team, status, assigned: 'me'|'none'|'', user}
