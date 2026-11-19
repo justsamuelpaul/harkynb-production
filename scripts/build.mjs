@@ -19,7 +19,7 @@ function structuredData(){const site=(config.siteUrl||'').replace(/\/$/,'');if(!
     address:{'@type':'PostalAddress',addressCountry:'NG'},areaServed:'NG',...(c.email?{email:c.email}:{}),...(c.whatsapp?{telephone:c.whatsapp}:{}),
     ...(c.email||c.whatsapp?{contactPoint:[{'@type':'ContactPoint',contactType:'customer service',...(c.email?{email:c.email}:{}),...(c.whatsapp?{telephone:c.whatsapp}:{}),availableLanguage:['English']}]}:{}),
     sameAs:config.socials.map(s=>safeUrl(s.url)).filter(Boolean),
-    subOrganization:brands.map(b=>({'@type':'Organization',name:b.name,url:site+'/brands/'+b.slug+'/',description:b.description}))};
+    subOrganization:brands.map(b=>({'@type':'Organization',name:b.name,url:site+'/brands/'+b.slug+'/',description:b.description,...(b.instagram?{logo:b.logo?site+b.logo:undefined,sameAs:[b.instagram]}:{})}))};
   return '<script type="application/ld+json">'+JSON.stringify(data).replace(/</g,'\\u003c')+'</script>';}
 export const process=()=>section(`${heading('How we work','Good work starts<br>with a clear plan.')}<div class="process">${steps.map(([t,p],i)=>`<article><span class="index">0${i+1}</span><h3>${t}</h3><p>${p}</p></article>`).join('')}</div>`);
 export const pages=new Map();
