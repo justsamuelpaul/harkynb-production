@@ -115,6 +115,13 @@ projects=await (await saveList('projects',{revision:0,items:[...projects.items,s
 assert.equal(projects.revision,1);assert.equal(projects.items.length,seed.projects.length+1);assert.equal(projects.canRestore,true);
 assert.equal((await saveList('projects',{revision:0,items:[]})).status,409,'stale revision');
 assert.equal((await call('/work/not-a-project/')).status,404);
+// With a published portfolio the sitemap lists exactly the published project pages.
+{
+  const builtMap='<?xml version="1.0"?><urlset><url><loc>https://hbproduction.co/</loc></url><url><loc>https://hbproduction.co/work/old-project/</loc><lastmod>2026-01-01</lastmod></url></urlset>';
+  const mapEnv={...env,ASSETS:{fetch:()=>new Response(builtMap)}};
+  const xml=await (await worker.fetch(new Request(origin+'/sitemap.xml'),mapEnv)).text();
+  assert.ok(!xml.includes('old-project')&&xml.includes('https://hbproduction.co/work/'+shoot.slug+'/')&&xml.includes('<loc>https://hbproduction.co/</loc>'));
+}
 assert.equal((await call('/work/_project/')).status,404);
 const {views,projectMain}=await import('../shared/render.mjs');
 const published=studio.collections().projects;
@@ -181,4 +188,24 @@ assert.equal((await adminJson('/admin/media',member,{image:'/9j/2Q=='})).status,
 assert.equal((await adminCall('/logout',member,{})).status,303);
 assert.equal((await adminCall('/admin/enquiries',member)).status,401);
 assert.equal((await adminCall('/login','',{name:'member',password:'my testing password'})).status,303);
+// Old workers.dev addresses forward to the real domains.
+assert.equal((await worker.fetch(new Request('https://harkynb-production.example.workers.dev/about/?a=1'),env)).headers.get('Location'),'https://hbproduction.co/about/?a=1');
+assert.equal((await admin.fetch(new Request('https://harkynb-admin.example.workers.dev/login'),bindings)).headers.get('Location'),'https://admin.hbproduction.co/login');
+
+// Enquiry emails: a staff alert with every answer (replies go to the visitor) and a short confirmation to the visitor.
+{
+  const sent=[], realFetch=globalThis.fetch, pending=[];
+  globalThis.fetch=async(u,o)=>{sent.push({url:String(u),auth:o.headers.Authorization,body:JSON.parse(o.body)});return new Response('{}');};
+  const mailEnv={...env,RESEND_API_KEY:'re_test'}, mailCtx={waitUntil:p=>pending.push(p)};
+  const enquiry={...student,requestId:crypto.randomUUID(),name:'Tola <b>Ade</b>',email:'tola@example.com',phone:'0800',message:'Secret plans for the visitor email test.'};
+  const post=()=>worker.fetch(new Request(origin+'/api/enquiries',{method:'POST',headers:{origin,'Content-Type':'application/json'},body:JSON.stringify(enquiry)}),mailEnv,mailCtx);
+  assert.equal((await post()).status,201); await Promise.all(pending);
+  assert.equal(sent.length,2); assert.ok(sent.every(m=>m.url==='https://api.resend.com/emails'&&m.auth==='Bearer re_test'));
+  const [staffMail,visitorMail]=[sent.find(m=>m.body.to[0]==='hello@hbproduction.co'),sent.find(m=>m.body.to[0]==='tola@example.com')];
+  assert.equal(staffMail.body.reply_to,'tola@example.com'); assert.match(staffMail.body.subject,/Creators Academy enquiry from Tola/);
+  assert.ok(staffMail.body.html.includes('Programmes you are interested in')&&staffMail.body.html.includes('&lt;b&gt;')&&!staffMail.body.html.includes('<b>Ade'));
+  assert.equal(visitorMail.body.reply_to,'hello@hbproduction.co'); assert.ok(!visitorMail.body.html.includes('Secret plans'),'confirmation does not echo the message');
+  assert.equal((await post()).status,201); await Promise.all(pending); assert.equal(sent.length,2,'a resubmitted duplicate sends nothing');
+  globalThis.fetch=realFetch;
+}
 console.log('PASS: separate portal signup, owner approval, login, shared inbox, alerts, brand filters, assignment, portfolio and news lists, role checks and logout.');

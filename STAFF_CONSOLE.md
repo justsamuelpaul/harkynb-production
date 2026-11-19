@@ -32,3 +32,20 @@ Both Workers build from the same repository and branch, `main`. With root direct
 | Published photo URLs | Public `/media/{id}`. The admin Worker retrieves previews through its SITE binding. |
 
 Verify deployments independently. A successful public build does not deploy admin code. If an admin build stops at Cloning, retry that build and check the GitHub repository connection if fetching repeatedly fails.
+
+## Enquiry emails (Resend)
+
+Every new enquiry sends two emails through Resend, in addition to the dashboard alert:
+
+- **Staff alert** to `hello@hbproduction.co` with every answer. Replying goes straight to the visitor.
+- **Confirmation** to the visitor. It does not repeat what they typed, so the form cannot be used to send other people arbitrary text.
+
+Setup, in Cloudflare under **harkynb-production → Settings → Variables and Secrets**:
+
+| Name | Type | Value |
+| --- | --- | --- |
+| `RESEND_API_KEY` | Secret | Resend API key (required; without it no email is sent) |
+| `NOTIFY_TO` | Text, optional | Staff addresses, comma separated. Default `hello@hbproduction.co` |
+| `MAIL_FROM` | Text, optional | Sender. Default `HarkynB Production <hello@hbproduction.co>` |
+
+`hbproduction.co` must be verified as a sending domain in Resend (add the DNS records Resend shows in Cloudflare DNS). Resend sends mail only; receiving mail at hello@hbproduction.co needs a mailbox or Cloudflare Email Routing. Failed sends are logged in the Worker's logs and never block an enquiry.
