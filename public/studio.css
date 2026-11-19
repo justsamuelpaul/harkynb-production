@@ -101,3 +101,4 @@ dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
   main>nav button{flex:1 1 auto;padding:.6rem .5rem}
 }
 .button-link{display:inline-block;padding:.55rem 1rem;border:1px solid var(--blue-ink);border-radius:6px;font-weight:600;text-decoration:none}
+button.button-link{background:none;color:var(--blue-ink);font:inherit;font-weight:600;cursor:pointer}
