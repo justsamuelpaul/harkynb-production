@@ -337,5 +337,95 @@
     "registrationUrl": "",
     "date": "",
     "venue": ""
-  }
+  },
+  "clients": [
+    {
+      "name": "Brand Communicator",
+      "logo": "/clients/brand-communicator.png",
+      "size": [
+        364,
+        160
+      ]
+    },
+    {
+      "name": "abiolachamp",
+      "logo": "/clients/abiolachamp.png",
+      "size": [
+        747,
+        160
+      ]
+    },
+    {
+      "name": "Kingsland Heritage",
+      "logo": "/clients/hingsland-heritage.png",
+      "size": [
+        284,
+        64
+      ]
+    },
+    {
+      "name": "Spanner",
+      "logo": "/clients/spanner.png",
+      "size": [
+        184,
+        49
+      ]
+    }
+  ],
+  "highlights": [
+    {
+      "client": "Golden Penny",
+      "title": "Soup Festival and World Noodles Day",
+      "year": "2024",
+      "role": "Creative portraits",
+      "link": "https://www.instagram.com/brandcommunicator/reel/DAyUnL2Oye_/"
+    },
+    {
+      "client": "National Advertising Conference",
+      "title": "Conference coverage",
+      "year": "2024",
+      "role": "Creative portraits",
+      "link": "https://www.instagram.com/brandcommunicator/reel/DCUzsSYuCmV/"
+    },
+    {
+      "client": "PwC",
+      "title": "International Women’s Day celebration",
+      "year": "2024",
+      "role": "Photography"
+    },
+    {
+      "client": "Olu of Lagos",
+      "title": "Campaign on quality education, media and entertainment",
+      "role": "Production and direction of campaign visuals"
+    },
+    {
+      "client": "Ride With Remi, with Davido",
+      "title": "Ride With Remi initiative",
+      "role": "Post-production editing"
+    },
+    {
+      "client": "E-mission",
+      "title": "Documentary: “The Most Powerful Man in the Universe”",
+      "role": "Produced and directed"
+    },
+    {
+      "client": "Nutriyo",
+      "title": "Children’s Day celebration, hosted by Cway",
+      "role": "Photography"
+    }
+  ],
+  "testimonials": [
+    {
+      "quote": "Great photographer. They covered my wedding n it was top notch.",
+      "name": "Eberechi Ndukwe-Bello",
+      "source": "Google review",
+      "rating": 5
+    },
+    {
+      "quote": "Trust me, he is one of the best I have come across...... He delivers with full accuracy and efficiency with the aim to satisfy customer and clients needs.",
+      "name": "Okiki Oluwa",
+      "source": "Google review",
+      "rating": 5
+    }
+  ]
 }
