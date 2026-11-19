@@ -206,6 +206,14 @@ assert.equal((await admin.fetch(new Request('https://harkynb-admin.example.worke
   assert.ok(staffMail.body.html.includes('Programmes you are interested in')&&staffMail.body.html.includes('&lt;b&gt;')&&!staffMail.body.html.includes('<b>Ade'));
   assert.equal(visitorMail.body.reply_to,'hello@hbproduction.co'); assert.ok(!visitorMail.body.html.includes('Secret plans'),'confirmation does not echo the message');
   assert.equal((await post()).status,201); await Promise.all(pending); assert.equal(sent.length,2,'a resubmitted duplicate sends nothing');
+  // Staff see the email outcome on each enquiry: sent, Resend's refusal, or a missing key.
+  const note=async()=>(await list(owner,'')).find(r=>r.id===enquiry.requestId)?.emailNote;
+  assert.equal(await note(),'Sent to staff and visitor');
+  globalThis.fetch=async()=>new Response(JSON.stringify({message:'The hbproduction.co domain is not verified.'}),{status:403});
+  enquiry.requestId=crypto.randomUUID(); await post(); await Promise.all(pending);
+  assert.match(await note(),/Staff alert not sent. Resend error 403: The hbproduction.co domain is not verified./);
+  enquiry.requestId=crypto.randomUUID(); await worker.fetch(new Request(origin+'/api/enquiries',{method:'POST',headers:{origin,'Content-Type':'application/json'},body:JSON.stringify(enquiry)}),env,mailCtx); await Promise.all(pending);
+  assert.match(await note(),/no RESEND_API_KEY secret/);
   globalThis.fetch=realFetch;
 }
 console.log('PASS: separate portal signup, owner approval, login, shared inbox, alerts, brand filters, assignment, portfolio and news lists, role checks and logout.');

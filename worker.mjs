@@ -45,7 +45,8 @@ export default {async fetch(request,env,ctx) {
     const bucket = Array.from(new Uint8Array(await digest(ip+'|'+Math.floor(Date.now()/600000)))).join('.');
     const saved = await store.submit(d.requestId,entry,bucket);
     // Staff alert and visitor confirmation by email, only for a new enquiry (not a resubmitted duplicate).
-    if (saved==='new') ctx?.waitUntil(sendEnquiryEmails(env,entry).catch(e=>console.error('Enquiry email',e)));
+    // The outcome (sent, or why not) is saved on the enquiry so staff can see it in the console.
+    if (saved==='new') ctx?.waitUntil(sendEnquiryEmails(env,entry).catch(e=>'Email failed: '+String(e?.message||e).slice(0,150)).then(note=>store.emailNote(d.requestId,note)));
     return saved ? json({saved:true},201) : fail('Please try again in ten minutes.',429);
   }
   // Once staff publish the portfolio, the sitemap lists exactly the published project pages.
@@ -131,6 +132,8 @@ export class Studio extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS assignments(id TEXT PRIMARY KEY,user TEXT,name TEXT); CREATE TABLE IF NOT EXISTS seen(user TEXT PRIMARY KEY,cursor INTEGER)');
     // Published staff lists (portfolio projects, news). previous='built' means restoring returns to the content built with the site.
     this.sql.exec('CREATE TABLE IF NOT EXISTS collections(name TEXT PRIMARY KEY,revision INTEGER,current TEXT,previous TEXT)');
+    // Outcome of the enquiry emails, shown to staff on each enquiry.
+    this.sql.exec('CREATE TABLE IF NOT EXISTS email_notes(id TEXT PRIMARY KEY,note TEXT)');
   }
   collections() {
     const out = {projects:null,news:null};
@@ -238,6 +241,7 @@ export class Studio extends DurableObject {
     });
     return this.page(path);
   }
+  emailNote(id,note){if(note)this.sql.exec('INSERT OR REPLACE INTO email_notes VALUES(?,?)',id,String(note).slice(0,500));}
   photo(id){return this.sql.exec('SELECT mime,bytes FROM media WHERE id=?',id).toArray()[0];}
   submit(id,entry,bucket) {
     return this.ctx.storage.transactionSync(()=>{
@@ -258,7 +262,7 @@ export class Studio extends DurableObject {
     else if (filter.status) {where.push('e.status = ?'); args.push(filter.status);}
     if (filter.assigned==='me') {where.push('a.user = ?'); args.push(filter.user);}
     else if (filter.assigned==='none') where.push('a.user IS NULL');
-    return this.sql.exec('SELECT e.rowid AS cursor,e.id,e.created,e.entry,e.status,a.user AS assignee,a.name AS assigneeName FROM enquiries e LEFT JOIN assignments a ON a.id=e.id WHERE '+where.join(' AND ')+' ORDER BY e.rowid DESC LIMIT 30',...args)
+    return this.sql.exec('SELECT e.rowid AS cursor,e.id,e.created,e.entry,e.status,a.user AS assignee,a.name AS assigneeName,n.note AS emailNote FROM enquiries e LEFT JOIN assignments a ON a.id=e.id LEFT JOIN email_notes n ON n.id=e.id WHERE '+where.join(' AND ')+' ORDER BY e.rowid DESC LIMIT 30',...args)
       .toArray().map(r=>({...r,entry:JSON.parse(r.entry)}));
   }
   // change: {status?, assignee?: {id,name} | null}
