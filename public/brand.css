@@ -181,3 +181,4 @@ footer .logo{height:56px}
 /* ShotIt's logo is white on black: show it as a rounded badge. Instagram link under brand page buttons. */
 .brand-logo[src$="harkynbshotit.png"]{border-radius:12px}
 .hero-social{display:inline-block;margin-left:4px}
+.hero-mark .brand-logo[src$="harkynb-creators-academy.png"]{height:136px}
