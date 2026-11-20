@@ -208,3 +208,17 @@ footer .logo{height:56px}
 .founder h2{margin-bottom:6px}
 .founder-role{font-size:.9rem;font-weight:600;color:var(--hb-blue-ink);margin-bottom:22px}
 @media(max-width:820px){.founder{grid-template-columns:1fr;gap:32px}.founder-photo{max-width:420px}}
+/* Academy registration page */
+.academy-join-section{background:radial-gradient(ellipse at 92% 8%,#E3F0FC,transparent 62%);border-top:4px solid var(--hb-blue)}
+.academy-join{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+.academy-join h1{font-size:clamp(2.8rem,5vw,4.8rem);line-height:1.05;letter-spacing:-.05em;margin-bottom:24px}
+.academy-join .lede{max-width:46ch}
+.join-points{list-style:none;padding:0;margin:0 0 32px;display:grid;gap:10px}
+.join-points li{position:relative;padding-left:30px;font-weight:600;color:var(--hb-charcoal)}
+.join-points li:before{content:'✓';position:absolute;left:0;top:0;width:20px;height:20px;border-radius:50%;background:var(--hb-blue);color:#fff;font-size:.72rem;display:grid;place-items:center}
+.academy-join-photo{margin:0}
+.academy-join-photo img{width:100%;height:auto;display:block;border-radius:6px;box-shadow:0 24px 60px #1E212626}
+.academy-join-photo figcaption{font-size:.8rem;color:#545A63;margin-top:10px}
+.register-layout aside h2{font-size:clamp(1.8rem,3vw,2.4rem);margin-bottom:12px}
+@media(max-width:820px){.academy-join{grid-template-columns:1fr;gap:36px}}
+#register{scroll-margin-top:110px}
